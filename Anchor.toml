@@ -1,0 +1,21 @@
+[features]
+seeds = false
+skip-lint = false
+
+[programs.localnet]
+byo_mint = "GnukyHhbXhqeswaZbzDiTLZeMSHMuWNTNxw4buhS6zpg"
+[programs.devnet]
+byo_mint = "GnukyHhbXhqeswaZbzDiTLZeMSHMuWNTNxw4buhS6zpg"
+[programs.mainnet]
+byo_mint = "GnukyHhbXhqeswaZbzDiTLZeMSHMuWNTNxw4buhS6zpg"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Devnet"
+wallet = "~/.wallets/byom_auth.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*-tests.ts"
+test_byo = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/byo/*-tests.ts"

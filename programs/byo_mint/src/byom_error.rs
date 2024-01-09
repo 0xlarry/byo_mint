@@ -32,4 +32,6 @@ pub enum ByomError {
     InvalidUri,
     #[msg("Invalid Background Color")]
     InvalidBackgroundColor,
+    #[msg("Too many variants")]
+    TooManyVariants,
 }

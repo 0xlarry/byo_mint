@@ -11,7 +11,7 @@ import { ByoMint } from "../target/types/byo_mint";
 describe("ByoMint", () => {
   const rpc = String(process.env.RPC);
   const connection = new Connection(rpc, "confirmed")
-  const decodedSecretKey = base58.decode(String(process.env.TEST_KEY));
+  const decodedSecretKey = base58.decode(String(process.env.BYOG_AUTH));
   const kp = Keypair.fromSecretKey(decodedSecretKey);
   const decodedSecretKey2 = base58.decode(String(process.env.TEST_KEY1));
   const kp2 = Keypair.fromSecretKey(decodedSecretKey2);
@@ -53,8 +53,8 @@ describe("ByoMint", () => {
     });
   });
   
-  it("should increase supply cap", async () => {
-    const ix = await updateFaucetIx(program, kp.publicKey, faucetPda, null, (LAMPORTS_PER_SOL * 0.01 - LAMPORTS_PER_SOL * 0.00095));
+  it.only("should increase supply cap", async () => {
+    const ix = await updateFaucetIx(program, kp.publicKey, faucetPda, 5555, (LAMPORTS_PER_SOL * 0.01 - LAMPORTS_PER_SOL * 0.00095));
     await executeTx(kp, [ix], null, false, true);
   })
 

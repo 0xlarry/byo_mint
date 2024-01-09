@@ -16,19 +16,45 @@ pub mod byo_mint {
     // *************************************************************
     // METADATA MAP
     // *************************************************************
-    pub fn create_metadata_map<'info>(
+    pub fn create_metadata_map<'info>( // depricated v0
         ctx: Context<'_, '_, '_, 'info, CreateMetadataMap<'info>>,
         params: CreateMetadataMapParams
     ) -> Result<()> {
         actions::create_metadata_map(ctx, params)
     }
 
-    pub fn delete_metadata_map<'info>(
+    pub fn delete_metadata_map<'info>( // depricated v0
         ctx: Context<'_, '_, '_, 'info, DeleteMetadataMap<'info>>
     ) -> Result<()> {
         actions::delete_metadata_map(ctx)
     }
 
+    // byo map
+    pub fn create_byo_map<'info>( // depricated v0
+        ctx: Context<'_, '_, '_, 'info, CreateByoMap<'info>>,
+        params: CreateByoMapParams
+    ) -> Result<()> {
+        actions::create_byo_map(ctx, params)
+    }
+
+    pub fn delete_byo_map<'info>( // depricated v0
+        ctx: Context<'_, '_, '_, 'info, DeleteByoMap<'info>>
+    ) -> Result<()> {
+        actions::delete_byo_map(ctx)
+    }
+    // supply map
+    pub fn create_supply_map<'info>( // depricated v0
+        ctx: Context<'_, '_, '_, 'info, CreateSupplyMap<'info>>,
+        params: CreateSupplyMapParams
+    ) -> Result<()> {
+        actions::create_supply_map(ctx, params)
+    }
+
+    pub fn delete_supply_map<'info>( // depricated v0
+        ctx: Context<'_, '_, '_, 'info, DeleteSupplyMap<'info>>
+    ) -> Result<()> {
+        actions::delete_supply_map(ctx)
+    }
 
     // *************************************************************
     // FAUCET

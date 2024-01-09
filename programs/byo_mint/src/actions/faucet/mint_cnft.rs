@@ -17,6 +17,14 @@ pub fn byo_cnft(ctx: Context<MintCnft>, params: MintCnftParams) -> Result<()> {
     require!(ctx.accounts.metadata_map.key() == ctx.accounts.faucet.metadata_map, ByomError::InvalidAccount);
     require!(ctx.accounts.faucet.current_supply < ctx.accounts.faucet.supply_cap, ByomError::SupplyCap);
 
+    // bg color does not factor into the byo_mint pda... thus same color can be used on different layer combos
+    match params.bg_color {
+        Some(bgc) => {
+            require!(is_valid_hex_color(bgc.as_str()), ByomError::InvalidBackgroundColor);
+        },
+        None => {}
+    }
+
     // validate layers
     MetadataMap::validate_input_layers(&mut ctx.accounts.metadata_map, params.layers.clone())?;
 
@@ -84,7 +92,8 @@ pub fn byo_cnft(ctx: Context<MintCnft>, params: MintCnftParams) -> Result<()> {
 
 #[derive(Clone, AnchorSerialize, AnchorDeserialize)]
 pub struct MintCnftParams {
-    layers: [u8; 10]
+    layers: [u8; 10],
+    bg_color: Option<String>
 }
 
 #[derive(Accounts)]

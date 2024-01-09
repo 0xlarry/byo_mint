@@ -30,4 +30,6 @@ pub enum ByomError {
     InvalidSymbol,
     #[msg("Invalid URI")]
     InvalidUri,
+    #[msg("Invalid Background Color")]
+    InvalidBackgroundColor,
 }

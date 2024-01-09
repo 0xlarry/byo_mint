@@ -205,7 +205,8 @@ export const mintCnftIx = async (
     program: any,
     signerPubkey: PublicKey,
     faucetPda: PublicKey,
-    layers: any
+    layers: any,
+    bgColor = null
 ) => {
     const facuetAccount = await program.account.faucet.fetch(faucetPda);
     const umi = createUmi(process.env.RPC);
@@ -227,7 +228,8 @@ export const mintCnftIx = async (
     );
 
     return await program.methods.mint({
-        layers: Buffer.from(layers)
+        layers: Buffer.from(layers),
+        bgColor
     }).accounts({
         minter: signerPubkey,
         faucet: faucetPda,

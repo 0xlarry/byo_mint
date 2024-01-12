@@ -15,10 +15,10 @@ use anchor_spl::{
 
 
 // ***************************************************
-// CREATE FAUCET
+// CREATE FAUCET WL
 // ***************************************************
 // TODO: require(merkle account size >= sizeof(max_supply))
-pub fn create_faucet(ctx: Context<CreateFaucet>, params: CreateFaucetParams) -> Result<()> {
+pub fn create_faucet_wl(ctx: Context<CreateFaucetWl>, params: CreateFaucetWlParams) -> Result<()> {
     // ************************************
     // set up faucet account
     require!(ctx.accounts.faucet_auth.key() == ctx.accounts.metadata_map.authority, ByomError::InvalidAuthority);
@@ -30,9 +30,11 @@ pub fn create_faucet(ctx: Context<CreateFaucet>, params: CreateFaucetParams) -> 
     ctx.accounts.faucet.supply_cap = params.supply_cap;
     ctx.accounts.faucet.mint_price = params.mint_price;
     ctx.accounts.faucet.bump = ctx.bumps.faucet;
+    ctx.accounts.faucet.wl_collection = params.wl_collection;
     msg!("-- Set account data");
     
     let signer_seeds: &[&[&[u8]]] = &[&[
+        "wl".as_bytes(),
         ctx.accounts.faucet.authority.as_ref(),
         ctx.accounts.faucet.metadata_map.as_ref(),
         &[ctx.accounts.faucet.bump],
@@ -117,26 +119,27 @@ pub fn create_faucet(ctx: Context<CreateFaucet>, params: CreateFaucetParams) -> 
 }
 
 #[derive(Clone, AnchorSerialize, AnchorDeserialize)]
-pub struct CreateFaucetParams {
+pub struct CreateFaucetWlParams {
     collection_name: String,
     collection_symbol: String,
     collection_uri: String,
     mint_price: u64,
-    supply_cap: u64
+    supply_cap: u64,
+    wl_collection: Pubkey
 }
 
 #[derive(Accounts)]
-pub struct CreateFaucet<'info> {
+pub struct CreateFaucetWl<'info> {
     #[account(mut)]
     pub faucet_auth: Signer<'info>,
     #[account(
         init,
-        space=Faucet::LEN,
+        space=FaucetWl::LEN,
         payer = faucet_auth,
-        seeds=[faucet_auth.key().as_ref(), metadata_map.key().as_ref()],
+        seeds=["wl".as_ref(), faucet_auth.key().as_ref(), metadata_map.key().as_ref()],
         bump
     )]
-    pub faucet: Account<'info, Faucet>,
+    pub faucet: Account<'info, FaucetWl>,
     pub metadata_map: Account<'info, MetadataMap>,
     #[account(
         init,

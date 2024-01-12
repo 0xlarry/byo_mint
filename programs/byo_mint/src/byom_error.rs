@@ -32,4 +32,8 @@ pub enum ByomError {
     InvalidUri,
     #[msg("Invalid Background Color")]
     InvalidBackgroundColor,
+    #[msg("Invalid Collection")]
+    InvalidCollection,
+    #[msg("Invalid Owner")]
+    InvalidOwner,
 }

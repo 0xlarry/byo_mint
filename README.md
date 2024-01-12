@@ -30,12 +30,19 @@ This empty account is created during mint using the layers that the minter choos
 `mint`
 `update_faucet`
 `withdraw_fees`
+`create_faucet_wl`
+`add_new_tree_wl`
+`mint_wl`
+`update_faucet_wl`
+`withdraw_fees_wl`
 
-# BYOGnomes
-![BYOGnome](byognome.png)
-I created a project to showcase this program: [BYOGnomes](http://byognome.xyz) 
+# I created these projects to showcase this repo:
+[BYOGnomes](http://byognome.xyz) 
+[Saga Sentients](http://saga-sentients.com) 
+
 
 # TODOs + Project Extensions
-- Add WL minting capabilities (token gate holding an NFT, or a wallet list)
 - Add customization for royalty splits between minter/faucet
 - NFT/SFT/SPL burn in exchange for cNFT
+- Add bg color change ix
+- Enable adding variants to metadata maps

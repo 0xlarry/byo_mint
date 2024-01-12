@@ -46,13 +46,6 @@ pub mod byo_mint {
         actions::faucet::add_new_tree(ctx)
     }
 
-    pub fn mint<'info>(
-        ctx: Context<'_, '_, '_, 'info, MintCnft<'info>>,
-        params: MintCnftParams
-    ) -> Result<()> {
-        actions::byo_cnft(ctx, params)
-    }
-
     pub fn update_faucet<'info>(
         ctx: Context<'_, '_, '_, 'info, UpdateFaucet<'info>>,
         params: UpdateFaucetParams
@@ -65,6 +58,50 @@ pub mod byo_mint {
     ) -> Result<()> {
         actions::withdraw_fees(ctx)
     }
+
+    pub fn mint<'info>(
+        ctx: Context<'_, '_, '_, 'info, MintCnft<'info>>,
+        params: MintCnftParams
+    ) -> Result<()> {
+        actions::byo_cnft(ctx, params)
+    }
+
+    // *************************************************************
+    // Whitelisted collections, 1:1 per nft in collection
+    // *************************************************************
+    pub fn create_faucet_wl<'info>(
+        ctx: Context<'_, '_, '_, 'info, CreateFaucetWl<'info>>,
+        params: CreateFaucetWlParams
+    ) -> Result<()> {
+        actions::create_faucet_wl(ctx, params)
+    }
+
+    pub fn mint_wl<'info>(
+        ctx: Context<'_, '_, '_, 'info, MintCnftWl<'info>>,
+        params: MintCnftWlParams
+    ) -> Result<()> {
+        actions::mint_cnft_wl(ctx, params)
+    }
+
+    pub fn add_new_tree_wl<'info>(
+        ctx: Context<'_, '_, '_, 'info, AddNewTreeWl<'info>>
+    ) -> Result<()> {
+        actions::faucet::add_new_tree_wl(ctx)
+    }
+
+    pub fn update_faucet_wl<'info>(
+        ctx: Context<'_, '_, '_, 'info, UpdateFaucetWl<'info>>,
+        params: UpdateFaucetWlParams
+    ) -> Result<()> {
+        actions::update_faucet_wl(ctx, params)
+    }
+
+    pub fn withdraw_fees_wl<'info>(
+        ctx: Context<'_, '_, '_, 'info, WithdrawFeesWl<'info>>
+    ) -> Result<()> {
+        actions::withdraw_fees_wl(ctx)
+    }
+
 }
 
 #[derive(Clone)]

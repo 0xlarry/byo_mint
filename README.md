@@ -12,6 +12,9 @@ On creation of a `Faucet`, an Collection NFT is minted to the Faucet. Each cNFT 
 
 When creating the `faucet`, the creator must provide a `mint_price` and `seller_fee_basis_points` (royalty percentage). For each cNFT that is minted, the designated `mint_price` is sent the `Faucet` account as payment for the cNFT. This program hard codes a royalty split of 50/50 to the `Faucet` and the wallet that mints the cNFT. If the cNFT is sold on secondary markets, like [tesnor.trade](http://tensor.trade), the designated `seller_fee_basis_points` sent to the `Faucet` and the minter's wallet. Use the instruction `withdraw_fees` as the authority of the `Faucet` to access the funds the faucet generates.
 
+**Faucet WL**
+Same as above, but with the additional `wl_collection` that requires the minter to hold an NFT from the given collection.
+
 **Metadata Map**
 
 Metadata is assigned to cNFTs after the the token is minted. The map enables projects to customized how many layers (traits) and variants are avaialble. The number of layers is capped at 10, and the cap of variants for each layer is 255.
@@ -22,6 +25,10 @@ It is important to note that the JSON metadata file, and image need to be genera
 
 This empty account is created during mint using the layers that the minter chooses. This PDA is essential for ensuring that each cNFT minted to the colleciton is unique. 
 
+**BYO Mint**
+
+This empty account is created during mint using the mint of the token from the whitelisted collection. This PDA is essential for ensuring that there is a 1:1 relationship between cNFT mints and NFTs held from the whitelisted collection.
+
 # Instructions
 `create_metadata_map`
 `delete_metadata_map`
@@ -30,12 +37,19 @@ This empty account is created during mint using the layers that the minter choos
 `mint`
 `update_faucet`
 `withdraw_fees`
+`create_faucet_wl`
+`add_new_tree_wl`
+`mint_wl`
+`update_faucet_wl`
+`withdraw_fees_wl`
 
-# BYOGnomes
-![BYOGnome](byognome.png)
-I created a project to showcase this program: [BYOGnomes](http://byognome.xyz) 
+# I created these projects to showcase this repo:
+[BYOGnomes](http://byognome.xyz) 
+[Saga Sentients](http://saga-sentients.com) 
+
 
 # TODOs + Project Extensions
-- Add WL minting capabilities (token gate holding an NFT, or a wallet list)
 - Add customization for royalty splits between minter/faucet
 - NFT/SFT/SPL burn in exchange for cNFT
+- Add bg color change ix
+- Enable adding variants to metadata maps

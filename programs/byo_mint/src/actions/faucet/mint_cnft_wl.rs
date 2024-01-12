@@ -2,6 +2,7 @@ use crate::*;
 use anchor_lang::solana_program::program::invoke;
 use anchor_lang::solana_program::pubkey::Pubkey;
 use anchor_lang::solana_program::system_instruction;
+use anchor_spl::token::TokenAccount;
 use mpl_bubblegum::instructions::MintToCollectionV1CpiBuilder;
 use mpl_bubblegum::types::{Creator, Collection, MetadataArgs, TokenProgramVersion, TokenStandard};
 
@@ -9,11 +10,14 @@ use mpl_bubblegum::types::{Creator, Collection, MetadataArgs, TokenProgramVersio
 // *********************************
 // MINT cNFT FROM FAUCET
 // *********************************
-pub fn byo_cnft(ctx: Context<MintCnft>, params: MintCnftParams) -> Result<()> {
+pub fn mint_cnft_wl(ctx: Context<MintCnftWl>, params: MintCnftWlParams) -> Result<()> {
     // checks
     require!(ctx.accounts.faucet.merkle_tree == ctx.accounts.merkle_tree.key(), ByomError::InvalidAccount);
     require!(ctx.accounts.metadata_map.key() == ctx.accounts.faucet.metadata_map, ByomError::InvalidAccount);
     require!(ctx.accounts.faucet.current_supply < ctx.accounts.faucet.supply_cap, ByomError::SupplyCap);
+
+    // token gate
+    FaucetWl::assert_wl(&mut ctx.accounts.faucet, ctx.accounts.minter.key(), ctx.accounts.token_account.clone(), ctx.accounts.metadata.clone())?;
 
     // bg color does not factor into the byo_mint pda... thus same color can be used on different layer combos
     match params.bg_color {
@@ -39,6 +43,7 @@ pub fn byo_cnft(ctx: Context<MintCnft>, params: MintCnftParams) -> Result<()> {
     // mint cnft
     let metadata_map = &mut ctx.accounts.metadata_map;
     let signer_seeds: &[&[&[u8]]] = &[&[
+        "wl".as_bytes(),
         ctx.accounts.faucet.authority.as_ref(),
         ctx.accounts.faucet.metadata_map.as_ref(),
         &[ctx.accounts.faucet.bump],
@@ -89,18 +94,18 @@ pub fn byo_cnft(ctx: Context<MintCnft>, params: MintCnftParams) -> Result<()> {
 }
 
 #[derive(Clone, AnchorSerialize, AnchorDeserialize)]
-pub struct MintCnftParams {
+pub struct MintCnftWlParams {
     layers: [u8; 10],
     bg_color: Option<String>
 }
 
 #[derive(Accounts)]
-#[instruction(params: MintCnftParams)]
-pub struct MintCnft<'info> {
+#[instruction(params: MintCnftWlParams)]
+pub struct MintCnftWl<'info> {
     #[account(mut)]
     pub minter: Signer<'info>,
     #[account(mut)]
-    pub faucet: Box<Account<'info, Faucet>>,
+    pub faucet: Box<Account<'info, FaucetWl>>,
     pub metadata_map: Box<Account<'info, MetadataMap>>,
     #[account(
         init,
@@ -131,5 +136,17 @@ pub struct MintCnft<'info> {
     pub compression_program: Program<'info, SplAccountCompression>,
     pub token_metadata_program: Program<'info, MplTokenMetadata>,
     pub bubblegum_program: Program<'info, MplBubblegum>,
-    pub system_program: Program<'info, System>
+    pub system_program: Program<'info, System>,
+    // COLLECTION TOKEN GATING
+    #[account(
+        init,
+        space=WlMint::LEN,
+        payer = minter,
+        seeds=[metadata_map.key().as_ref(), token_account.mint.as_ref()],
+        bump
+    )]
+    pub wl_mint: Account<'info, WlMint>,
+    pub token_account: Account<'info, TokenAccount>,
+    /// CHECK: metadata is ok
+    pub metadata: AccountInfo<'info>
 }

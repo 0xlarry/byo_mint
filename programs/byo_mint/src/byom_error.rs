@@ -36,4 +36,8 @@ pub enum ByomError {
     InvalidCollection,
     #[msg("Invalid Owner")]
     InvalidOwner,
+    #[msg("Background Token Already Exists")]
+    BackgroundTokenAlreadyExists,
+    #[msg("Background Token Does Not Exist")]
+    BackgroundTokenDoesNotExist,
 }

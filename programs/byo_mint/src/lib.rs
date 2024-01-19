@@ -29,6 +29,36 @@ pub mod byo_mint {
         actions::delete_metadata_map(ctx)
     }
 
+    // *************************************************************
+    // BACKGROUND
+    // *************************************************************
+    pub fn set_bg_color<'info>(
+        ctx: Context<'_, '_, '_, 'info, SetBgColor<'info>>,
+        params: SetBgColorParams
+    ) -> Result<()> {
+        actions::set_bg_color(ctx, params)
+    }
+
+    pub fn close_bg<'info>(
+        ctx: Context<'_, '_, '_, 'info, CloseBackground<'info>>,
+        params: CloseBackgroundParams
+    ) -> Result<()> {
+        actions::close_background(ctx, params)
+    }
+
+    pub fn add_bg_token<'info>(
+        ctx: Context<'_, '_, '_, 'info, AddBgToken<'info>>,
+        params: AddBgTokenParams
+    ) -> Result<()> {
+        actions::add_bg_token(ctx, params)
+    }
+
+    pub fn remove_bg_token<'info>(
+        ctx: Context<'_, '_, '_, 'info, RemoveBgToken<'info>>,
+        params: RemoveBgTokenParams
+    ) -> Result<()> {
+        actions::remove_bg_token(ctx, params)
+    }
 
     // *************************************************************
     // FAUCET

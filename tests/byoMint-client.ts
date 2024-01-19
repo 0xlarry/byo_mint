@@ -6,6 +6,8 @@ import { PublicKey as UmiPK } from "@metaplex-foundation/umi";
 import * as anchor from "@coral-xyz/anchor";
 import {PROGRAM_ID as TOKEN_METADATA_PROGRAM_ID} from "@metaplex-foundation/mpl-token-metadata";
 import { SPL_NOOP_PROGRAM_ID, SPL_ACCOUNT_COMPRESSION_PROGRAM_ID, createAllocTreeIx } from "@solana/spl-account-compression";
+import axios from "axios";
+import bs58 from 'bs58';
 
 const connection = new Connection(String(process.env.RPC));
 // *********************************************************************
@@ -51,6 +53,14 @@ export const findWlMintPda = (program, metadataMap, mint) => {
         mint.toBuffer()
     ], program.programId);
     return wlMintPda;
+}
+
+export const findBackgroundPda = (program, mint) => {
+    let [bgPda] = PublicKey.findProgramAddressSync([
+        anchor.utils.bytes.utf8.encode("bg"),
+        mint.toBuffer()
+    ], program.programId);
+    return bgPda;
 }
 
 // *********************************
@@ -493,3 +503,147 @@ export const payoutWlIx = async (
         systemProgram: anchor.web3.SystemProgram.programId
     }).instruction()
 }
+
+
+// *********************************
+// BACKGROUND IXs
+// *********************************
+export const closeBackgroundIx = async (
+    program: any,
+    signerPubkey: PublicKey,
+    mint: PublicKey
+) => {
+    const {proofPathAsAccounts, params, merkleTree} = await getCnftAccounts(mint);
+    const bgPda = findBackgroundPda(program, mint);
+    return await program.methods.closeBg(params).accounts({
+        leafOwner: signerPubkey,
+        background: bgPda,
+        merkleTree: merkleTree,
+        compressionProgram: SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId
+    })
+    .remainingAccounts(proofPathAsAccounts)
+    .instruction();
+}
+
+export const setBgColorIx = async (
+    program: any,
+    signerPubkey: PublicKey,
+    mint: PublicKey,
+    bgColor: String,
+) => {
+    const {proofPathAsAccounts, params, merkleTree} = await getCnftAccounts(mint);
+    const bgPda = findBackgroundPda(program, mint);
+    params['bgColor'] = bgColor;
+    console.log({proofPathAsAccounts});
+    return await program.methods.setBgColor(params).accounts({
+        leafOwner: signerPubkey,
+        background: bgPda,
+        merkleTree: merkleTree,
+        compressionProgram: SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId
+    })
+    .remainingAccounts(proofPathAsAccounts)
+    .instruction();
+}
+
+
+
+// utils
+export const getCnftAccounts = async (assetId, loadingLoot = false) => {
+    // fetch asset data
+    const asset = await getAsset(assetId);
+    const proof = await getAssetProof(assetId);
+
+    // accounts
+    const leafDelegate = asset.ownership.delegate ? new PublicKey(asset.ownership.delegate) : new PublicKey(asset.ownership.owner);
+    const proofPathAsAccounts = mapProof(proof);
+    console.log("PROOF LENGTH = ", proofPathAsAccounts.length);
+    console.log("TREE PUBKEY = ", asset.compression.tree)
+
+    // params
+    const root = decode(proof.root);
+    const dataHash = decode(asset.compression.data_hash);
+    const creatorHash = decode(asset.compression.creator_hash);
+    const nonce = new anchor.BN(asset.compression.leaf_id);
+    const index = asset.compression.leaf_id;
+    const retObj = {
+        leafDelegate, 
+        proofPathAsAccounts,
+        merkleTree: new PublicKey(asset.compression.tree),
+        params: {
+            root,
+            dataHash,
+            creatorHash,
+            nonce,
+            index
+        }
+    }
+    if (!loadingLoot) {
+        retObj.params['name'] = asset.content.metadata.name;
+        retObj.params['uri'] = asset.content.json_uri;
+        retObj.params['symbol'] = asset.content.metadata.symbol;
+    }
+    return retObj;
+}
+
+export async function getAsset(assetId: any, rpcUrl = process.env.RPC): Promise<any> {
+    try {
+      const axiosInstance = axios.create({
+        baseURL: rpcUrl,
+      });
+      const response = await axiosInstance.post(rpcUrl, {
+        jsonrpc: "2.0",
+        method: "getAsset",
+        id: "rpd-op-123",
+        params: {
+          id: assetId
+        },
+      });
+      return response.data.result;
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  
+  
+  export async function getAssetProof(assetId: any, rpcUrl = process.env.RPC): Promise<any> {
+    try {
+  
+      const axiosInstance = axios.create({
+        baseURL: rpcUrl,
+      });
+      const response = await axiosInstance.post(rpcUrl, {
+        jsonrpc: "2.0",
+        method: "getAssetProof",
+        id: "rpd-op-123",
+        params: {
+          id: assetId
+        },
+      });
+      return response.data.result;
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  export function decode(stuff: string) {
+    return bufferToArray(bs58.decode(stuff))
+  }
+  function bufferToArray(buffer: Buffer): number[] {
+    const nums: number[] = [];
+    for (let i = 0; i < buffer.length; i++) {
+      nums.push(buffer[i]);
+    }
+    return nums;
+  }
+  export const mapProof = (assetProof: any) => {
+    if (!assetProof.proof || assetProof.proof.length === 0) {
+      throw new Error("Proof is empty");
+    }
+    return assetProof.proof.map((node:any) => ({
+      pubkey: new PublicKey(node),
+      isSigner: false,
+      isWritable: false,
+    }));
+  };

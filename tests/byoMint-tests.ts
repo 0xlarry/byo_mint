@@ -4,9 +4,10 @@ import base58 from 'bs58';
 import { 
   findFaucetPda, findMetadataMapPda, 
   executeTx,
-  addNewTree, createFaucetIx, createMetadataMapIx, deleteMetadataMapIx, updateFaucetIx, mintCnftIx, payoutIx
+  addNewTree, createFaucetIx, createMetadataMapIx, deleteMetadataMapIx, updateFaucetIx, mintCnftIx, payoutIx, setBgColorIx, findBackgroundPda
 } from "./byoMint-client";
 import { ByoMint } from "../target/types/byo_mint";
+import { PublicKey } from "@metaplex-foundation/js";
 
 describe.only("ByoMint", () => {
   const rpc = String(process.env.RPC);
@@ -53,13 +54,18 @@ describe.only("ByoMint", () => {
     });
   });
   
-  it.only("should increase supply cap", async () => {
+  it("should increase supply cap", async () => {
     const ix = await updateFaucetIx(program, kp.publicKey, faucetPda, null, (LAMPORTS_PER_SOL * 0.01 - LAMPORTS_PER_SOL * 0.00095));
     await executeTx(kp, [ix], null, false, true);
   })
 
   it("should mint cNFT", async () => {
-    const ix = await mintCnftIx(program, kp2.publicKey, faucetPda, [1, 0, 0, 3, 1, 5, 3, 4, 0, 0]);
+    const ix = await mintCnftIx(program, kp2.publicKey, faucetPda, [1, 4, 0, 3, 1, 5, 3, 4, 0, 0]);
+    await executeTx(kp2, [ix], null, false, true);
+  });
+
+  it.only("should update bg color", async () => {
+    const ix = await setBgColorIx(program, kp2.publicKey, new PublicKey('4C9i7sf4uxZcxPf7VS9UHdLUrUDsAo6D58pc1MhqMDjR'), "#abcdef");
     await executeTx(kp2, [ix], null, false, true);
   });
 
@@ -71,6 +77,7 @@ describe.only("ByoMint", () => {
   after("show state", async () => {
     // console.log('-- Metadata Map: ', (await program.account.metadataMap.fetch(metadataMapPda)));
     // console.log('-- Faucet: ', (await program.account.faucet.fetch(faucetPda)));
+    // console.log('-- BGs: ', (await program.account.background.fetch(findBackgroundPda(program, new PublicKey('CibvEBCs9vYPcUraGz4D2kzmnMpwhf36HMHDFkGtkiqa')))));
   });
 });
 

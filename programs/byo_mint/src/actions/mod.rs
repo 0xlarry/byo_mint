@@ -3,6 +3,8 @@ pub mod faucet;
 pub use faucet::*;
 pub mod metadata_map;
 pub use metadata_map::*;
+pub mod background;
+pub use background::*;
 pub mod util;
 pub use util::*;
 pub mod v2;

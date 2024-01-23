@@ -73,7 +73,7 @@ describe.skip("wl Mint", () => {
     await executeTx(kp2, [ix], null, false, true);
   });
 
-  it("should withdraw fees from faucet", async () => {
+  it.only("should withdraw fees from faucet", async () => {
     const ix = await payoutWlIx(program, kp.publicKey, faucetPda);
     await executeTx(kp, [ix], null, false, true);
   });

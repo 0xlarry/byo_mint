@@ -8,5 +8,7 @@ pub mod wl_mint;
 pub use wl_mint::*;
 pub mod faucet_wl;
 pub use faucet_wl::*;
+pub mod background;
+pub use background::*;
 pub mod v2;
 pub use v2::*;

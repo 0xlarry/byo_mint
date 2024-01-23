@@ -6,8 +6,8 @@ use anchor_lang::{
 use mpl_bubblegum::{utils::get_asset_id, instructions::TransferCpiBuilder};
 
 #[derive(Accounts)]
-#[instruction(params: RemoveBgTokenParams)]
-pub struct RemoveBgToken<'info> {
+#[instruction(params: AddBgTokenParams)]
+pub struct AddBgToken<'info> {
     #[account(mut)]
     pub signer: Signer<'info>, // cNFT owner
     #[account(
@@ -47,31 +47,32 @@ pub struct RemoveBgToken<'info> {
 }
 
 #[derive(Clone, AnchorSerialize, AnchorDeserialize)]
-pub struct RemoveBgTokenParams {
+pub struct AddBgTokenParams {
     root: [u8; 32],
     data_hash: [u8; 32],
     creator_hash: [u8; 32],
     nonce: u64,
     index: u32,
-    proof_len: usize,              
+    proof_len: u8,              
     bg_root: [u8; 32],
     bg_data_hash: [u8; 32],
     bg_creator_hash: [u8; 32],
     bg_nonce: u64,
     bg_index: u32,
-    bg_proof_len: usize,           // BG proof passed in second!!
+    bg_proof_len: u8,           // BG proof passed in second!!
 }
 
-pub fn remove_bg_token<'info>(ctx: Context<'_, '_, '_, 'info, RemoveBgToken<'info>>, params: RemoveBgTokenParams) -> Result<()> {
+pub fn add_bg_token<'info>(ctx: Context<'_, '_, '_, 'info, AddBgToken<'info>>, params: AddBgTokenParams) -> Result<()> {
     // require bg account string is not a pub key (already holds bg)
-    require!(ctx.accounts.background.color_or_asset_id.len() > 6, ByomError::BackgroundTokenDoesNotExist);
-    ctx.accounts.background.color_or_asset_id = String::new();
+    require!(ctx.accounts.background.color_or_asset_id.len() < 44, ByomError::BackgroundTokenAlreadyExists);
+    let bg_asset_id = get_asset_id(&ctx.accounts.bg_merkle_tree.key(), params.bg_nonce);
+    ctx.accounts.background.color_or_asset_id = bg_asset_id.to_string();
 
-    // find proofs
-    let proof = &ctx.remaining_accounts[0..(params.proof_len - 1)];
-    let bg_proof = &ctx.remaining_accounts[(params.proof_len - 1)..(params.proof_len + params.bg_proof_len - 1)];
+    // TODO add collection gate
 
     // require signer owns the cNFT for bg
+    let proof = &ctx.remaining_accounts[0..(params.proof_len - 1) as usize];
+    let bg_proof = &ctx.remaining_accounts[(params.proof_len - 1) as usize..(params.proof_len + params.bg_proof_len - 1) as usize];
     check_cnft_owner(
         &ctx.accounts.signer.to_account_info(), 
         &&ctx.accounts.merkle_tree.to_account_info(), 
@@ -95,9 +96,9 @@ pub fn remove_bg_token<'info>(ctx: Context<'_, '_, '_, 'info, RemoveBgToken<'inf
         &ctx.accounts.bubblegum_program.to_account_info()
     )
         .tree_config(&ctx.accounts.bg_tree_config.to_account_info())
-        .leaf_owner(&ctx.accounts.background.to_account_info(), true)
-        .leaf_delegate(&ctx.accounts.background.to_account_info(), true)
-        .new_leaf_owner(&ctx.accounts.signer.to_account_info())
+        .leaf_owner(&ctx.accounts.signer.to_account_info(), true)
+        .leaf_delegate(&ctx.accounts.signer.to_account_info(), true)
+        .new_leaf_owner(&ctx.accounts.background.to_account_info())
         .merkle_tree(&ctx.accounts.bg_merkle_tree.to_account_info())
         .log_wrapper(&ctx.accounts.log_wrapper.to_account_info())
         .compression_program(&ctx.accounts.compression_program.to_account_info())
@@ -108,11 +109,7 @@ pub fn remove_bg_token<'info>(ctx: Context<'_, '_, '_, 'info, RemoveBgToken<'inf
         .nonce(params.bg_nonce)
         .index(params.bg_index)
         .add_remaining_accounts(&remaining_accs)
-        .invoke_signed(&[&[
-            b"bg",
-            get_asset_id(&ctx.accounts.merkle_tree.key(), params.nonce).as_ref(),
-            &[ctx.bumps.background]
-        ]])?;
+        .invoke()?;
 
     Ok(())
 }

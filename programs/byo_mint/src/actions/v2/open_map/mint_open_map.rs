@@ -2,6 +2,7 @@ use crate::*;
 use anchor_lang::solana_program::program::invoke;
 use anchor_lang::solana_program::pubkey::Pubkey;
 use anchor_lang::solana_program::system_instruction;
+use anchor_spl::token::{ TokenAccount, transfer, Transfer};
 use mpl_bubblegum::instructions::MintToCollectionV1CpiBuilder;
 use mpl_bubblegum::types::{Collection, MetadataArgs, TokenProgramVersion, TokenStandard};
 
@@ -9,30 +10,64 @@ use mpl_bubblegum::types::{Collection, MetadataArgs, TokenProgramVersion, TokenS
 // *********************************
 // MINT cNFT FROM FAUCET
 // *********************************
-pub fn mint_supply_map(ctx: Context<MintSupplyMap>) -> Result<()> {
+pub fn mint_open_map(ctx: Context<MintOpenMap>, params: MintOpenMapParams) -> Result<()> {
     // checks
-    require!(ctx.accounts.faucet.merkle_tree == ctx.accounts.merkle_tree.key(), ByomError::InvalidAccount);
-    require!(ctx.accounts.supply_map.key() == ctx.accounts.faucet.supply_map, ByomError::InvalidAccount);
-    require!(ctx.accounts.faucet.current_supply < ctx.accounts.faucet.supply_cap, ByomError::SupplyCap);
+    FaucetV2::mint_requirements(
+        &mut ctx.accounts.faucet,
+        ctx.accounts.merkle_tree.key(), 
+        ctx.accounts.creator.key(), 
+        None, 
+        None, 
+        Some(&mut *ctx.accounts.open_map),
+    )?;
 
-    // pay fees
-    invoke(
-        &system_instruction::transfer(&ctx.accounts.minter.key(), &ctx.accounts.faucet.key(), ctx.accounts.faucet.mint_price), 
-    &[
-        ctx.accounts.minter.to_account_info(),
-        ctx.accounts.faucet.to_account_info(),
-        ctx.accounts.system_program.to_account_info(),
-    ])?;
-    msg!("PAID FEE");
+    // pay fees to FIRST CREATOR
+    if ctx.accounts.faucet.mint_token == Pubkey::default() {
+        invoke(
+            &system_instruction::transfer(&ctx.accounts.minter.key(), &ctx.accounts.faucet.key(), ctx.accounts.faucet.mint_price), 
+        &[
+            ctx.accounts.minter.to_account_info(),
+            ctx.accounts.creator.to_account_info(),
+            ctx.accounts.system_program.to_account_info(),
+        ])?;
+    } else {
+        let minter_ta;
+        match &ctx.accounts.minter_ta {
+            Some(ta) => {minter_ta = ta;},
+            None => {return Err(ByomError::InvalidAccount.into());}
+        }
+        let creator_ta;
+        match &ctx.accounts.creator_ta {
+            Some(ta) => {creator_ta = ta;},
+            None => {return Err(ByomError::InvalidAccount.into());}
+        }
+        require!(creator_ta.owner == ctx.accounts.open_map.creators[0].address, ByomError::InvalidAccount);
+        require!(
+            minter_ta.mint == ctx.accounts.faucet.mint_token && creator_ta.mint == ctx.accounts.faucet.mint_token,
+            ByomError::InvalidAccount
+        );
+        transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: minter_ta.to_account_info(),
+                    to: creator_ta.to_account_info(),
+                    authority: ctx.accounts.minter.to_account_info(),
+                },
+            ),
+            ctx.accounts.faucet.mint_price,
+        )?;
+    }
+    
 
     // choose item
-    let item_to_mint = SupplyMap::select_item(&mut ctx.accounts.supply_map, &ctx.accounts.clock).unwrap();
+    OpenMap::verify_metadata(params.json_uri.clone(), params.name.clone())?;
     
     // mint cnft
-    let supply_map = &mut ctx.accounts.supply_map;
+    let open_map = &mut ctx.accounts.open_map;
     let signer_seeds: &[&[&[u8]]] = &[&[
         ctx.accounts.faucet.authority.as_ref(),
-        ctx.accounts.faucet.supply_map.as_ref(),
+        ctx.accounts.faucet.collection_mint.as_ref(),
         &[ctx.accounts.faucet.bump],
     ]];
     MintToCollectionV1CpiBuilder::new(
@@ -55,11 +90,11 @@ pub fn mint_supply_map(ctx: Context<MintSupplyMap>) -> Result<()> {
         .token_metadata_program(&ctx.accounts.token_metadata_program.to_account_info())
         .system_program(&ctx.accounts.system_program.to_account_info())
         .metadata( MetadataArgs {
-                name: format!("{}", item_to_mint.name),
-                symbol: supply_map.symbol.clone(),
-                uri: format!("{}/{}.json", supply_map.uri_prefix, item_to_mint.json_uri_suffix),
-                creators: build_creators(supply_map.creators.clone(), ctx.accounts.minter.key()),
-                seller_fee_basis_points: supply_map.seller_fee_basis_points,
+                name: params.name,
+                symbol: open_map.symbol.clone(),
+                uri: params.json_uri,
+                creators: build_creators(open_map.creators.clone(), ctx.accounts.minter.key()),
+                seller_fee_basis_points: open_map.seller_fee_basis_points,
                 primary_sale_happened: false,
                 is_mutable: false,
                 edition_nonce: Some(0),
@@ -77,21 +112,27 @@ pub fn mint_supply_map(ctx: Context<MintSupplyMap>) -> Result<()> {
     Ok(())
 }
 
+#[derive(Clone, AnchorSerialize, AnchorDeserialize)]
+pub struct MintOpenMapParams {
+    json_uri: String,
+    name: String
+}
+
 #[derive(Accounts)]
-pub struct MintSupplyMap<'info> {
+pub struct MintOpenMap<'info> {
     #[account(mut)]
     pub minter: Signer<'info>,
     #[account(mut)]
     pub faucet: Box<Account<'info, FaucetV2>>,
-    pub supply_map: Box<Account<'info, SupplyMap>>,
+    pub open_map: Box<Account<'info, OpenMap>>,
     /// CHECK: This account is checked in the instruction
     #[account(mut)]
     pub tree_config: UncheckedAccount<'info>,
-    /// CHECK: This account is neither written to nor read from.
-    pub leaf_owner: AccountInfo<'info>,
     #[account(mut)]
     /// CHECK: unsafe
     pub merkle_tree: UncheckedAccount<'info>,
+    /// CHECK: This account is neither written to nor read from.
+    pub leaf_owner: AccountInfo<'info>,
     /// CHECK: This account is checked in the instruction
     pub collection_mint: UncheckedAccount<'info>,
     /// CHECK:
@@ -106,5 +147,12 @@ pub struct MintSupplyMap<'info> {
     pub token_metadata_program: Program<'info, MplTokenMetadata>,
     pub bubblegum_program: Program<'info, MplBubblegum>,
     pub system_program: Program<'info, System>,
-    pub clock: Sysvar<'info, Clock>
+    pub token_program: Program<'info, TokenProgram>,
+    /// CHECK: creator public key to send platform fees
+    #[account(mut)]
+    pub creator: AccountInfo<'info>,
+    #[account(mut)]
+    pub creator_ta: Option<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub minter_ta: Option<Account<'info, TokenAccount>>,
 }

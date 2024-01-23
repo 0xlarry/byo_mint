@@ -2,7 +2,7 @@
     "scripts": {
         "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
         "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
-        "airdrops": "solana airdrop 100 && solana airdrop 100 cXBtcARJkBDXpkEr5yK8gVtcsCP9TU46x7wFJ9F5Xfh && solana airdrop 100 AEb8XJLe3ChELQC7nN3gB4QB1CBM3diHkYkQe8kc9w8y && solana airdrop 100 CXXykJVvsNHkhFA964XArLTQQN8rFhf1b8Hk397GNw79 && solana airdrop 100 5qcP4VnLkW3s26eUKdyo15Nf2FfveN1ZRZxwFwhXGK3c && solana airdrop 100 78H1rr4BbeTN5ztvi8ykshcZTDdLC1tkL77Nverbx4of"
+        "airdrops": "solana airdrop 100 && solana airdrop 100 7RzYVxHS6Ap3yq3dpbT9oR2K8WSAesegjWyA2E18Ur3x && solana airdrop 100 34CWcsFXgDWTFa2x3baaD6y1UpsUWS6nDRBbRVX3Udsh && solana airdrop 100 5Vp8Xw8w7eaEDyxLh49Tjw3KBEszLWR86CcwjRn27CAo"
     },
     "dependencies": {
         "@coral-xyz/anchor": "^0.28.0",

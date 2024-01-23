@@ -3,7 +3,6 @@ use anchor_lang::solana_program::program::invoke;
 use anchor_lang::solana_program::pubkey::Pubkey;
 use anchor_lang::solana_program::system_instruction;
 use anchor_spl::token::{ TokenAccount, transfer, Transfer};
-// use mpl_bubblegum::accounts::MerkleTree;
 use mpl_bubblegum::instructions::MintToCollectionV1CpiBuilder;
 use mpl_bubblegum::types::{Collection, MetadataArgs, TokenProgramVersion, TokenStandard};
 
@@ -13,10 +12,14 @@ use mpl_bubblegum::types::{Collection, MetadataArgs, TokenProgramVersion, TokenS
 // *********************************
 pub fn mint_layer_map(ctx: Context<MintLayerMap>, params: MintLayerMapParams) -> Result<()> {
     // checks
-    require!(ctx.accounts.faucet.merkle_tree == ctx.accounts.merkle_tree.key(), ByomError::InvalidAccount);
-    require!(ctx.accounts.layer_map.key() == ctx.accounts.faucet.layer_map, ByomError::InvalidAccount);
-    require!(ctx.accounts.faucet.current_supply < ctx.accounts.faucet.supply_cap, ByomError::SupplyCap);
-    require!(ctx.accounts.creator.key() == ctx.accounts.layer_map.creators[0].0, ByomError::InvalidAccount);
+    FaucetV2::mint_requirements(
+        &mut ctx.accounts.faucet,
+        ctx.accounts.merkle_tree.key(), 
+        ctx.accounts.creator.key(), 
+        Some(&mut ctx.accounts.layer_map),
+        None, 
+        None
+    )?;
     LayerMap::validate_input_layers(&mut ctx.accounts.layer_map, params.layers.clone())?;
     match params.bg_color.clone() {
         Some(bgc) => {
@@ -29,6 +32,7 @@ pub fn mint_layer_map(ctx: Context<MintLayerMap>, params: MintLayerMapParams) ->
     ctx.accounts.trait_combo.variants = params.layers.clone();
 
     // pay fees to FIRST CREATOR
+    require!(ctx.accounts.creator.key() == ctx.accounts.layer_map.creators[0].address, ByomError::InvalidAccount);
     if ctx.accounts.faucet.mint_token == Pubkey::default() {
         invoke(
             &system_instruction::transfer(&ctx.accounts.minter.key(), &ctx.accounts.faucet.key(), ctx.accounts.faucet.mint_price), 
@@ -48,7 +52,7 @@ pub fn mint_layer_map(ctx: Context<MintLayerMap>, params: MintLayerMapParams) ->
             Some(ta) => {creator_ta = ta;},
             None => {return Err(ByomError::InvalidAccount.into());}
         }
-        require!(creator_ta.owner == ctx.accounts.layer_map.creators[0].0, ByomError::InvalidAccount);
+        require!(creator_ta.owner == ctx.accounts.layer_map.creators[0].address, ByomError::InvalidAccount);
         require!(
             minter_ta.mint == ctx.accounts.faucet.mint_token && creator_ta.mint == ctx.accounts.faucet.mint_token,
             ByomError::InvalidAccount
@@ -65,10 +69,8 @@ pub fn mint_layer_map(ctx: Context<MintLayerMap>, params: MintLayerMapParams) ->
             ctx.accounts.faucet.mint_price,
         )?;
     }
-    msg!("PAID FEE");
     
     // mint cnft
-    // let merkle_tree = MerkleTree::try_from(&ctx.accounts.merkle_tree.to_account_info()).unwrap();
     let layer_map = &mut ctx.accounts.layer_map;
     let signer_seeds: &[&[&[u8]]] = &[&[
         ctx.accounts.faucet.authority.as_ref(),
@@ -142,11 +144,11 @@ pub struct MintLayerMap<'info> {
     /// CHECK: This account is checked in the instruction
     #[account(mut)]
     pub tree_config: UncheckedAccount<'info>,
-    /// CHECK: This account is neither written to nor read from.
-    pub leaf_owner: AccountInfo<'info>,
     #[account(mut)]
     /// CHECK: unsafe
     pub merkle_tree: UncheckedAccount<'info>,
+    /// CHECK: This account is neither written to nor read from.
+    pub leaf_owner: AccountInfo<'info>,
     /// CHECK: This account is checked in the instruction
     pub collection_mint: UncheckedAccount<'info>,
     /// CHECK: collecction mint is ok
@@ -162,13 +164,11 @@ pub struct MintLayerMap<'info> {
     pub bubblegum_program: Program<'info, MplBubblegum>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, TokenProgram>,
-    pub clock: Sysvar<'info, Clock>,
     /// CHECK: creator public key to send platform fees
     #[account(mut)]
-    pub creator: AccountInfo<'info>,
+    pub creator: UncheckedAccount<'info>,
     #[account(mut)]
     pub creator_ta: Option<Account<'info, TokenAccount>>,
     #[account(mut)]
     pub minter_ta: Option<Account<'info, TokenAccount>>,
-    
 }

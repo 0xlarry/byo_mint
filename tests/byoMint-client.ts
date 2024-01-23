@@ -535,7 +535,6 @@ export const setBgColorIx = async (
     const {proofPathAsAccounts, params, merkleTree} = await getCnftAccounts(mint);
     const bgPda = findBackgroundPda(program, mint);
     params['bgColor'] = bgColor;
-    console.log({proofPathAsAccounts});
     return await program.methods.setBgColor(params).accounts({
         leafOwner: signerPubkey,
         background: bgPda,

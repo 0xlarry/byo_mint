@@ -1,7 +1,7 @@
 
 use crate::*;
 
-pub fn close_background<'info>(ctx: Context<'_, '_, '_, 'info, CloseBackground<'info>>, params: CloseBackgroundParams) -> Result<()> {
+pub fn close_bg<'info>(ctx: Context<'_, '_, '_, 'info, CloseBackground<'info>>, params: CloseBackgroundParams) -> Result<()> {
     check_cnft_owner(
         &ctx.accounts.leaf_owner.to_account_info(), 
         &&ctx.accounts.merkle_tree.to_account_info(), 

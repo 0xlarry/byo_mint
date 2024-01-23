@@ -8,7 +8,6 @@ pub fn create_supply_map(ctx: Context<CreateSupplyMap>, params: CreateSupplyMapP
         ctx.accounts.auth.key(),
         params.seller_fee_basis_points,
         params.symbol,
-        params.uri_prefix,
         &params.creators,
         params.items
     ).unwrap();
@@ -18,9 +17,8 @@ pub fn create_supply_map(ctx: Context<CreateSupplyMap>, params: CreateSupplyMapP
 #[derive(Clone, AnchorSerialize, AnchorDeserialize)]
 pub struct CreateSupplyMapParams {
     seller_fee_basis_points: u16,
-    uri_prefix: String,
     symbol: String,
-    creators: Vec<(Pubkey, u8)>,
+    creators: Vec<ByoCreator>,
     items: Vec<Item>
 }
 

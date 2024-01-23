@@ -2,14 +2,14 @@ import {Connection, Keypair, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
 import base58 from 'bs58';
 import { 
-  findFaucetPda, findMetadataMapPda, 
+  findMetadataMapPda, 
   executeTx,
-  addNewTree, createFaucetIx, createMetadataMapIx, deleteMetadataMapIx, updateFaucetIx, mintCnftIx, payoutIx, setBgColorIx, findBackgroundPda
+  createMetadataMapIx,updateFaucetWlIx, payoutWlIx, creatWlFaucetIx, mintWlIx, addNewTreeWl, findFaucetWlPda
 } from "./byoMint-client";
 import { ByoMint } from "../target/types/byo_mint";
 import { PublicKey } from "@metaplex-foundation/js";
 
-describe.only("ByoMint", () => {
+describe("wl Mint", () => {
   const rpc = String(process.env.RPC);
   const connection = new Connection(rpc, "confirmed")
   const decodedSecretKey = base58.decode(String(process.env.TEST_KEY));
@@ -27,57 +27,60 @@ describe.only("ByoMint", () => {
     console.log("-- kp2 balance: ", await connection.getBalance(kp2.publicKey) / LAMPORTS_PER_SOL);
   });
 
-  const symbol = "BYOG";
+  const symbol = "SENT";
   const metadataMapPda = findMetadataMapPda(program, kp.publicKey, symbol);
-  const faucetPda = findFaucetPda(program, kp.publicKey, metadataMapPda);
-  // console.log({
-  //   mdMapPda: metadataMapPda.toString(),
-  //   faucetPda: faucetPda.toString()
-  // })
+  const faucetPda = findFaucetWlPda(program, kp.publicKey, metadataMapPda);
+  console.log({
+    mdMapPda: metadataMapPda.toString(),
+    faucetPda: faucetPda.toString()
+  })
   describe("init faucet", () => {
     it("should create faucet", async () => {
       const mdIx = await createMetadataMapIx(
         program, 
         kp.publicKey, 
         500, 
-        [1, 6, 5, 8, 5, 7, 6, 6], 
-        'https://shdw-drive.genesysgo.net/Gz1cS4VEX9v7ep5cnPnqaByMGzF4LudSMCPBr1qS6RFx',
+        [10, 11, 15, 7, 27, 6], 
+        'https://shdw-drive.genesysgo.net/6vXdefvho6eDhJo7Z6PkN73DiZBvUH4nM7Bpt88pKviq',
         symbol
       );
-      const {ix, collectionMint} = await createFaucetIx(program, kp.publicKey, metadataMapPda, "BYOGnomes", symbol, "https://shdw-drive.genesysgo.net/Gz1cS4VEX9v7ep5cnPnqaByMGzF4LudSMCPBr1qS6RFx/collection.json", LAMPORTS_PER_SOL * 0.01);
+      const {ix, collectionMint} = await creatWlFaucetIx(
+        program, 
+        kp.publicKey, 
+        metadataMapPda, 
+        "Saga Sentients", 
+        symbol, 
+        "https://shdw-drive.genesysgo.net/6vXdefvho6eDhJo7Z6PkN73DiZBvUH4nM7Bpt88pKviq/collection.json", 
+        (LAMPORTS_PER_SOL * 0.05001 - LAMPORTS_PER_SOL * 0.00095 * 2),
+        new PublicKey('46pcSL5gmjBrPqGKFaLbbCmR6iVuLJbnQy13hAe7s6CC')
+      );
       await executeTx(kp, [mdIx, ix], collectionMint, null, true);
     });
 
     it("should add tree to faucet", async () => {
-      const {ix, emptyMerkleTree, allocTreeIx} = await addNewTree(program, kp.publicKey, faucetPda);
-      await executeTx(kp, [allocTreeIx, ix], emptyMerkleTree);
+      const {ix, emptyMerkleTree, allocTreeIx} = await addNewTreeWl(program, kp.publicKey, faucetPda);
+      await executeTx(kp, [allocTreeIx, ix], emptyMerkleTree, false, true);
     });
   });
   
-  it("should increase supply cap", async () => {
-    const ix = await updateFaucetIx(program, kp.publicKey, faucetPda, null, (LAMPORTS_PER_SOL * 0.01 - LAMPORTS_PER_SOL * 0.00095));
+  it("should increase supply cap and/or update price", async () => {
+    const ix = await updateFaucetWlIx(program, kp.publicKey, faucetPda, null, (LAMPORTS_PER_SOL * 0.05001 - LAMPORTS_PER_SOL * 0.00095 * 2));
     await executeTx(kp, [ix], null, false, true);
   })
 
   it("should mint cNFT", async () => {
-    const ix = await mintCnftIx(program, kp2.publicKey, faucetPda, [1, 4, 0, 3, 1, 5, 3, 4, 0, 0]);
-    await executeTx(kp2, [ix], null, false, true);
-  });
-
-  it.only("should update bg color", async () => {
-    const ix = await setBgColorIx(program, kp2.publicKey, new PublicKey('4C9i7sf4uxZcxPf7VS9UHdLUrUDsAo6D58pc1MhqMDjR'), "#abcdef");
+    const ix = await mintWlIx(program, kp2.publicKey, faucetPda, new PublicKey("wl_token_goes_here"), [3, 0, 3, 0, 1, 0, 0, 0, 0, 0], "#a2ff1a");
     await executeTx(kp2, [ix], null, false, true);
   });
 
   it("should withdraw fees from faucet", async () => {
-    const ix = await payoutIx(program, kp.publicKey, faucetPda);
+    const ix = await payoutWlIx(program, kp.publicKey, faucetPda);
     await executeTx(kp, [ix], null, false, true);
   });
 
   after("show state", async () => {
     // console.log('-- Metadata Map: ', (await program.account.metadataMap.fetch(metadataMapPda)));
-    // console.log('-- Faucet: ', (await program.account.faucet.fetch(faucetPda)));
-    // console.log('-- BGs: ', (await program.account.background.fetch(findBackgroundPda(program, new PublicKey('CibvEBCs9vYPcUraGz4D2kzmnMpwhf36HMHDFkGtkiqa')))));
+    // console.log('-- Faucet: ', (await program.account.faucetWl.fetch(faucetPda)));
   });
 });
 

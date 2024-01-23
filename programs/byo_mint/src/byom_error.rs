@@ -48,4 +48,6 @@ pub enum ByomError {
     TraitComboNotFound,
     #[msg("No Trait Combo Needed")]
     NoTraitComboNeeded,
+    #[msg("Invalid Name")]
+    InvalidName,
 }

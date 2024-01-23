@@ -6,7 +6,7 @@ pub struct LayerMap {
     pub seller_fee_basis_points: u16,
     pub symbol: String,
     pub uri_prefix: String,
-    pub creators: Vec<(Pubkey, u8)>,
+    pub creators: Vec<ByoCreator>,
     pub layers: [u8; 10], // array of max 10 layers, u8 -> layer variant, 0 == no trait
 }
 
@@ -16,12 +16,12 @@ impl LayerMap {
         + 2
         + 4                     // symbol
         + 150                   // uri max 150 chars
-        + 5 * (1 + 32+1)        // 5 creators
+        + 5 * ByoCreator::LEN       // 5 creators
         + 10                    // 10 traits
         + 1 + 32
         + 10;
         
-    pub fn new(authority: Pubkey, sfbp: u16, symbol: String, uri_prefix: String, creators: &Vec<(Pubkey, u8)>, layers: [u8; 10]) -> Result<LayerMap> {
+    pub fn new(authority: Pubkey, sfbp: u16, symbol: String, uri_prefix: String, creators: &Vec<ByoCreator>, layers: [u8; 10]) -> Result<LayerMap> {
         // input validation
         require!(layers.len() <= 10, ByomError::TooManyLayers);
         require!(sfbp <= 10000, ByomError::InvalidRoyalty);

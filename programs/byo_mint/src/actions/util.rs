@@ -116,26 +116,26 @@ pub fn get_random_index(clock: &Sysvar<Clock>, min: u64, max: u64, seed: u8) -> 
     random_u8 % (max - min + 1)
 }
 
-pub fn verify_creator_shares(creators: &Vec<(Pubkey, u8)>) -> Result<()> {
+pub fn verify_creator_shares(creators: &Vec<ByoCreator>) -> Result<()> {
     require!(creators.len() <= 5, ByomError::InvalidRoyalty);
-    let total_shares: u16 = creators.iter().map(|&(_, x)| x as u16).sum();
+    let total_shares: u16 = creators.iter().map(|x| x.share as u16).sum();
     require!(total_shares == 100, ByomError::InvalidRoyalty);
     Ok(())
 }
 
-pub fn build_creators(creators: Vec<(Pubkey, u8)>, minter_pubkey: Pubkey) -> Vec<Creator> {
+pub fn build_creators(creators: Vec<ByoCreator>, minter_pubkey: Pubkey) -> Vec<Creator> {
     let mut ret_creators: Vec<Creator> = Vec::new();
     for c in creators.iter() {
         let crtr;
-        if c.0 == Pubkey::default() { // GRANT MINTER royalties
+        if c.address == Pubkey::default() { // GRANT MINTER royalties
             crtr = minter_pubkey;
         } else {
-            crtr = c.0
+            crtr = c.address
         }
         ret_creators.push(Creator {
             address: crtr,
             verified: false,
-            share: c.1
+            share: c.share
         });
     }
     return ret_creators;

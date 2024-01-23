@@ -5,8 +5,7 @@ pub struct SupplyMap {
     pub authority: Pubkey,
     pub seller_fee_basis_points: u16,
     pub symbol: String, // max 4
-    pub uri_prefix: String, // max 100
-    pub creators: Vec<(Pubkey, u8)>,
+    pub creators: Vec<ByoCreator>,
     pub items: Vec<Item>,
 }
 
@@ -16,23 +15,20 @@ impl SupplyMap {
         + 32
         + 2
         + 4
-        + 100
-        + 4 + 25 * Item::LEN; // max of 25 items
+        + 5 * ByoCreator::LEN
+        + 4 + 10 * Item::LEN; // max of 10 items
     
-    pub fn new(authority: Pubkey, sfbp: u16, symbol: String, uri_prefix: String, creators: &Vec<(Pubkey, u8)>, items: Vec<Item>) -> Result<SupplyMap> {
+    pub fn new(authority: Pubkey, sfbp: u16, symbol: String, creators: &Vec<ByoCreator>, items: Vec<Item>) -> Result<SupplyMap> {
         // input validation
-        require!(items.len() <= 25, ByomError::TooManyItems);
         require!(sfbp <= 10000, ByomError::InvalidRoyalty);
         require!(symbol.len() <= 4, ByomError::InvalidSymbol);
-        require!(uri_prefix.len() <= 150, ByomError::InvalidUri);
-
+        Item::verify_items(items.clone())?;
         verify_creator_shares(creators)?;
 
         Ok(SupplyMap {
             authority,
             seller_fee_basis_points: sfbp, 
             symbol,
-            uri_prefix, 
             creators: creators.clone(),
             items
         })
@@ -61,17 +57,26 @@ impl SupplyMap {
 #[derive(Debug, Clone, AnchorSerialize, AnchorDeserialize)]
 pub struct Item {
     pub name: String,               // 15
-    pub json_uri_suffix: String,    // 25
+    pub json_uri: String,           // 150
     pub amount: u64,                
 }
 
 impl Item {
     pub const LEN: usize = 8 
         + 15 // 15 char name
-        + 25 // json uri
+        + 150 // json uri
         + 8;
 
-    pub fn new(name: String, json_uri_suffix: String, amount: u64) -> Item {
-        Item { name, json_uri_suffix, amount }
+    pub fn new(name: String, json_uri: String, amount: u64) -> Item {
+        Item { name, json_uri, amount }
+    }
+
+    pub fn verify_items(items: Vec<Item>) -> Result<()> {
+        require!(items.len() <= 10, ByomError::TooManyItems);
+        for i in items.iter() {
+            require!(i.name.len() <= 15, ByomError::InvalidName);
+            require!(i.json_uri.len() <= 150, ByomError::InvalidUri);
+        }
+        Ok(())
     }
 }

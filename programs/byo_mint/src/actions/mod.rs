@@ -1,14 +1,10 @@
 use crate::*;
-pub mod faucet;
-pub use faucet::*;
-pub mod metadata_map;
-pub use metadata_map::*;
-pub mod background;
-pub use background::*;
-pub mod util;
-pub use util::*;
+pub mod v1;
+pub use v1::*;
 pub mod v2;
 pub use v2::*;
+pub mod util;
+pub use util::*;
 
 pub struct TokenProgram;
 impl anchor_lang::Id for TokenProgram {

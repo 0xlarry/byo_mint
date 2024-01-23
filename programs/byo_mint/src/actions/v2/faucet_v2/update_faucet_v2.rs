@@ -36,6 +36,14 @@ pub fn update_faucet_v2(ctx: Context<UpdateFaucetV2>, params: UpdateFaucetV2Para
         },
         None => {}
     };
+
+    match &ctx.accounts.open_map {
+        Some(x) => {
+            require!(x.authority == ctx.accounts.faucet.authority, ByomError::InvalidAuthority);
+            ctx.accounts.faucet.open_map = x.key();
+        },
+        None => {}
+    };
     Ok(())
 }
 
@@ -49,9 +57,10 @@ pub struct UpdateFaucetV2Params {
 pub struct UpdateFaucetV2<'info> {
     #[account(mut)]
     pub faucet_auth: Signer<'info>,
-    pub layer_map: Option<Account<'info, LayerMap>>,
-    pub supply_map: Option<Account<'info, SupplyMap>>,
     #[account(mut)]
     pub faucet: Account<'info, FaucetV2>,
+    pub layer_map: Option<Account<'info, LayerMap>>,
+    pub supply_map: Option<Account<'info, SupplyMap>>,
+    pub open_map: Option<Account<'info, OpenMap>>,
     pub system_program: Program<'info, System>,
 }

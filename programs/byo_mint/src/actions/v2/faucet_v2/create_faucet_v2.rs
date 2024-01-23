@@ -8,7 +8,7 @@ use anchor_spl::{
         CreateMasterEditionV3, 
         CreateMetadataAccountsV3, 
         Metadata,
-        mpl_token_metadata::{types::{CollectionDetails, DataV2, Creator}, instructions::VerifyCreatorV1CpiBuilder},
+        mpl_token_metadata::types::{CollectionDetails, DataV2, Creator},
     },
     token::{Mint, mint_to, MintTo, Token, TokenAccount},
 };
@@ -29,12 +29,9 @@ pub fn create_faucet_v2(ctx: Context<CreateFaucetV2>, params: CreateFaucetV2Para
         params.mint_price,
         &ctx.accounts.layer_map,
         &ctx.accounts.supply_map,
+        &ctx.accounts.open_map,
         match params.mint_token {
-            Some(x) => x.key(),
-            None => Pubkey::default()
-        },
-        match params.wl_collection {
-            Some(x) => x.key(),
+            Some(x) => x,
             None => Pubkey::default()
         },
         ctx.bumps.faucet
@@ -83,7 +80,7 @@ pub fn create_faucet_v2(ctx: Context<CreateFaucetV2>, params: CreateFaucetV2Para
         seller_fee_basis_points: 0,
         creators: Some(vec![
             Creator {address: ctx.accounts.faucet_auth.key().clone(), verified: false, share: 100},
-            Creator {address: ctx.accounts.faucet.key().clone(), verified: true, share: 0},
+            Creator {address: ctx.accounts.faucet.key().clone(), verified: false, share: 0},
         ]),
         collection: None,
         uses: None,
@@ -95,12 +92,6 @@ pub fn create_faucet_v2(ctx: Context<CreateFaucetV2>, params: CreateFaucetV2Para
         true,
         Some(CollectionDetails::V1 { size: 1 }),
     )?;
-    VerifyCreatorV1CpiBuilder::new(&ctx.accounts.token_metadata_program)
-        .authority(&ctx.accounts.faucet_auth.to_account_info())
-        .metadata(&ctx.accounts.metadata_account.to_account_info())
-        .system_program(&ctx.accounts.system_program.to_account_info())
-        .sysvar_instructions(&ctx.accounts.sysvar_instructions.to_account_info())
-        .invoke()?;
     msg!("-- Created collection nft metadata {}", ctx.accounts.metadata_account.key().to_string());
 
     // ************************************
@@ -132,7 +123,6 @@ pub struct CreateFaucetV2Params {
     collection_uri: String,
     mint_price: u64,
     supply_cap: u64,
-    wl_collection: Option<Pubkey>,
     mint_token: Option<Pubkey>,
 }
 
@@ -150,6 +140,7 @@ pub struct CreateFaucetV2<'info> {
     pub faucet: Account<'info, FaucetV2>,
     pub layer_map: Option<Account<'info, LayerMap>>,
     pub supply_map: Option<Account<'info, SupplyMap>>,
+    pub open_map: Option<Account<'info, OpenMap>>,
     #[account(
         init,
         payer = faucet_auth,

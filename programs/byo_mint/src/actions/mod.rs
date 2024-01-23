@@ -5,6 +5,8 @@ pub mod metadata_map;
 pub use metadata_map::*;
 pub mod util;
 pub use util::*;
+pub mod v2;
+pub use v2::*;
 
 pub struct TokenProgram;
 impl anchor_lang::Id for TokenProgram {

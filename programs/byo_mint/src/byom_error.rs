@@ -36,4 +36,12 @@ pub enum ByomError {
     InvalidCollection,
     #[msg("Invalid Owner")]
     InvalidOwner,
+    #[msg("Invalid Rarity")]
+    InvalidRarity,
+    #[msg("Too Many Items")]
+    TooManyItems,
+    #[msg("Trait Combo Not Found")]
+    TraitComboNotFound,
+    #[msg("No Trait Combo Needed")]
+    NoTraitComboNeeded,
 }

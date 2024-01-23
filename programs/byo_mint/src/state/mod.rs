@@ -10,3 +10,5 @@ pub mod faucet_wl;
 pub use faucet_wl::*;
 pub mod background;
 pub use background::*;
+pub mod v2;
+pub use v2::*;

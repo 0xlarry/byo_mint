@@ -40,4 +40,12 @@ pub enum ByomError {
     BackgroundTokenAlreadyExists,
     #[msg("Background Token Does Not Exist")]
     BackgroundTokenDoesNotExist,
+    #[msg("Invalid Rarity")]
+    InvalidRarity,
+    #[msg("Too Many Items")]
+    TooManyItems,
+    #[msg("Trait Combo Not Found")]
+    TraitComboNotFound,
+    #[msg("No Trait Combo Needed")]
+    NoTraitComboNeeded,
 }

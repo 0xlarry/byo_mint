@@ -132,6 +132,56 @@ pub mod byo_mint {
         actions::withdraw_fees_wl(ctx)
     }
 
+    // *************************************************************
+    // V2
+    // *************************************************************
+    // metadata maps
+    pub fn create_layer_map<'info>(
+        ctx: Context<'_, '_, '_, 'info, CreateLayerMap<'info>>,
+        params: CreateLayerMapParams
+    ) -> Result<()> {
+        actions::create_layer_map(ctx, params)
+    }
+
+    pub fn create_supply_map<'info>(
+        ctx: Context<'_, '_, '_, 'info, CreateSupplyMap<'info>>,
+        params: CreateSupplyMapParams
+    ) -> Result<()> {
+        actions::create_supply_map(ctx, params)
+    }
+    // facuet
+    pub fn create_faucet_v2<'info>(
+        ctx: Context<'_, '_, '_, 'info, CreateFaucetV2<'info>>,
+        params: CreateFaucetV2Params
+    ) -> Result<()> {
+        actions::create_faucet_v2(ctx, params)
+    }
+
+    pub fn add_new_tree_v2<'info>(
+        ctx: Context<'_, '_, '_, 'info, AddNewTreeV2<'info>>
+    ) -> Result<()> {
+        actions::add_new_tree_v2(ctx)
+    }
+
+    pub fn update_faucet_v2<'info>(
+        ctx: Context<'_, '_, '_, 'info, UpdateFaucetV2<'info>>,
+        params: UpdateFaucetV2Params
+    ) -> Result<()> {
+        actions::update_faucet_v2(ctx, params)
+    }
+    // mint
+    pub fn mint_layer_map<'info>(
+        ctx: Context<'_, '_, '_, 'info, MintLayerMap<'info>>,
+        params: MintLayerMapParams
+    ) -> Result<()> {
+        actions::mint_layer_map(ctx, params)
+    }
+
+    pub fn mint_supply_map<'info>(
+        ctx: Context<'_, '_, '_, 'info, MintSupplyMap<'info>>,
+    ) -> Result<()> {
+        actions::mint_supply_map(ctx)
+    }
 }
 
 #[derive(Clone)]

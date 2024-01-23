@@ -7,6 +7,8 @@ pub mod background;
 pub use background::*;
 pub mod util;
 pub use util::*;
+pub mod v2;
+pub use v2::*;
 
 pub struct TokenProgram;
 impl anchor_lang::Id for TokenProgram {

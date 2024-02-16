@@ -23,7 +23,7 @@ pub fn mint_supply_map(ctx: Context<MintSupplyMap>) -> Result<()> {
     // pay fees
     if ctx.accounts.faucet.mint_token == Pubkey::default() {
         invoke(
-            &system_instruction::transfer(&ctx.accounts.minter.key(), &ctx.accounts.faucet.key(), ctx.accounts.faucet.mint_price), 
+            &system_instruction::transfer(&ctx.accounts.minter.key(), &ctx.accounts.creator.key(), ctx.accounts.faucet.mint_price), 
         &[
             ctx.accounts.minter.to_account_info(),
             ctx.accounts.creator.to_account_info(),
@@ -115,8 +115,9 @@ pub struct MintSupplyMap<'info> {
     #[account(mut)]
     pub minter: Signer<'info>,
     #[account(mut)]
-    pub faucet: Box<Account<'info, FaucetV2>>,
-    pub supply_map: Box<Account<'info, SupplyMap>>,
+    pub faucet: Account<'info, FaucetV2>,
+    #[account(mut)]
+    pub supply_map: Account<'info, SupplyMap>,
     /// CHECK: This account is checked in the instruction
     #[account(mut)]
     pub tree_config: UncheckedAccount<'info>,

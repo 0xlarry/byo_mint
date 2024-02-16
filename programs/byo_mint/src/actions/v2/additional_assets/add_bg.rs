@@ -6,16 +6,16 @@ use anchor_lang::{
 use mpl_bubblegum::{utils::get_asset_id, instructions::TransferCpiBuilder};
 
 #[derive(Accounts)]
-#[instruction(params: AddBgTokenParams)]
-pub struct AddBgToken<'info> {
+#[instruction(params: AddBgParams)]
+pub struct AddBg<'info> {
     #[account(mut)]
     pub signer: Signer<'info>, // cNFT owner
     #[account(
         mut,
-        seeds=["bg".as_ref(), get_asset_id(&merkle_tree.key(), params.nonce).as_ref()],
+        seeds=["additional_assets".as_ref(), get_asset_id(&merkle_tree.key(), params.nonce).as_ref()],
         bump
     )]
-    pub background: Account<'info, Background>, // escrow account (cNFT receiver)
+    pub additional_assets: Account<'info, AdditionalAssets>, // escrow account (cNFT receiver)
     /// CHECK: This account is modified in the downstream program
     pub merkle_tree: UncheckedAccount<'info>,
     /// CHECK: This account is neither written to nor read from.
@@ -33,7 +33,7 @@ pub struct AddBgToken<'info> {
 }
 
 #[derive(Clone, AnchorSerialize, AnchorDeserialize)]
-pub struct AddBgTokenParams {
+pub struct AddBgParams {
     root: [u8; 32],
     data_hash: [u8; 32],
     creator_hash: [u8; 32],
@@ -51,16 +51,15 @@ pub struct AddBgTokenParams {
     bg_uri: String,
 }
 
-pub fn add_bg_token<'info>(ctx: Context<'_, '_, '_, 'info, AddBgToken<'info>>, params: AddBgTokenParams) -> Result<()> {
+pub fn add_bg<'info>(ctx: Context<'_, '_, '_, 'info, AddBg<'info>>, params: AddBgParams) -> Result<()> {
     // require bg account string is not a pub key (already holds bg)
-    require!(ctx.accounts.background.color_or_asset_id.len() < 44, ByomError::BackgroundTokenAlreadyExists);
+    require!(ctx.accounts.additional_assets.background == Pubkey::default(), ByomError::BackgroundTokenAlreadyExists);
     let bg_asset_id = get_asset_id(&ctx.accounts.bg_merkle_tree.key(), params.bg_nonce);
-    ctx.accounts.background.color_or_asset_id = bg_asset_id.to_string();
-    msg!("SET BG ASSET ID");
+    ctx.accounts.additional_assets.background = bg_asset_id;
+    msg!("-- SET BG ASSET");
 
     // find proofs
-    let proof = &ctx.remaining_accounts[0..(params.proof_len) as usize];
-    let bg_proof = &ctx.remaining_accounts[(params.proof_len) as usize..(params.proof_len + params.bg_proof_len) as usize];
+    let (proof, bg_proof) = ctx.remaining_accounts.split_at(params.proof_len as usize);
 
     // require signer owns the cNFT that is getting asset
     check_cnft_owner(
@@ -78,6 +77,7 @@ pub fn add_bg_token<'info>(ctx: Context<'_, '_, '_, 'info, AddBgToken<'info>>, p
     // collection gate
     validate_metadata(params.bg_data_hash, params.bg_name, params.bg_uri, params.bg_creator)?;
 
+    msg!("-- CHECKS PASSED, transferring.");
     // transfer bg asset
     let remaining_accs: Vec<(&AccountInfo<'info>, bool, bool)> = bg_proof.iter()
         .map(|x| (
@@ -91,7 +91,7 @@ pub fn add_bg_token<'info>(ctx: Context<'_, '_, '_, 'info, AddBgToken<'info>>, p
         .tree_config(&ctx.accounts.bg_tree_config.to_account_info())
         .leaf_owner(&ctx.accounts.signer.to_account_info(), true)
         .leaf_delegate(&ctx.accounts.signer.to_account_info(), true)
-        .new_leaf_owner(&ctx.accounts.background.to_account_info())
+        .new_leaf_owner(&ctx.accounts.additional_assets.to_account_info())
         .merkle_tree(&ctx.accounts.bg_merkle_tree.to_account_info())
         .log_wrapper(&ctx.accounts.log_wrapper.to_account_info())
         .compression_program(&ctx.accounts.compression_program.to_account_info())

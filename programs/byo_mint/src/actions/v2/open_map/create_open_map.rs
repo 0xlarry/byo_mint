@@ -1,7 +1,7 @@
 use crate::*;
 
 // *********************************
-// CREATE LAYER MAP
+// CREATE OPEN MAP
 // *********************************
 pub fn create_open_map(ctx: Context<CreateOpenMap>, params: CreateOpenMapParams) -> Result<()> {
     *ctx.accounts.open_map = OpenMap::new(
@@ -9,6 +9,7 @@ pub fn create_open_map(ctx: Context<CreateOpenMap>, params: CreateOpenMapParams)
         params.seller_fee_basis_points,
         params.symbol,
         &params.creators,
+        params.uri_prefix
     ).unwrap();
     Ok(())
 }
@@ -18,6 +19,7 @@ pub struct CreateOpenMapParams {
     seller_fee_basis_points: u16,
     symbol: String,
     creators: Vec<ByoCreator>,
+    uri_prefix: String
 }
 
 #[derive(Accounts)]

@@ -21,7 +21,8 @@ use anchor_spl::{
 pub fn create_faucet_v2(ctx: Context<CreateFaucetV2>, params: CreateFaucetV2Params) -> Result<()> {
     // ************************************
     // set up faucet account
-    *ctx.accounts.faucet = FaucetV2::new(
+    msg!("in create faucet v2");
+    **ctx.accounts.faucet = FaucetV2::new(
         ctx.accounts.faucet_auth.key(),
         ctx.accounts.mint.key(), 
         Pubkey::default(),
@@ -56,7 +57,6 @@ pub fn create_faucet_v2(ctx: Context<CreateFaucetV2>, params: CreateFaucetV2Para
         signer_seeds,
     );
     mint_to(cpi_context, 1)?;
-    msg!("-- Created collection nft mint, {}", ctx.accounts.mint.key().to_string());
 
     // ************************************
     // create metadata account
@@ -66,7 +66,7 @@ pub fn create_faucet_v2(ctx: Context<CreateFaucetV2>, params: CreateFaucetV2Para
             metadata: ctx.accounts.metadata_account.to_account_info(),
             mint: ctx.accounts.mint.to_account_info(),
             mint_authority: ctx.accounts.faucet.to_account_info(),          // mint authority of collection metadata is faucet (pda)
-            update_authority: ctx.accounts.faucet_auth.to_account_info(),   // update authority to collection metadata is faucet authority (signer)
+            update_authority: ctx.accounts.faucet.to_account_info(),   // update authority to collection metadata is faucet authority (signer)
             payer: ctx.accounts.faucet_auth.to_account_info(),
             system_program: ctx.accounts.system_program.to_account_info(),
             rent: ctx.accounts.rent.to_account_info(),
@@ -92,7 +92,6 @@ pub fn create_faucet_v2(ctx: Context<CreateFaucetV2>, params: CreateFaucetV2Para
         true,
         Some(CollectionDetails::V1 { size: 1 }),
     )?;
-    msg!("-- Created collection nft metadata {}", ctx.accounts.metadata_account.key().to_string());
 
     // ************************************
     // create master edition account
@@ -102,7 +101,7 @@ pub fn create_faucet_v2(ctx: Context<CreateFaucetV2>, params: CreateFaucetV2Para
             edition: ctx.accounts.master_edition_account.to_account_info(),
             mint: ctx.accounts.mint.to_account_info(),
             mint_authority: ctx.accounts.faucet.to_account_info(),          // mint authority of collection metadata is faucet (pda)
-            update_authority: ctx.accounts.faucet_auth.to_account_info(),   // update authority to collection metadata is faucet authority (signer)
+            update_authority: ctx.accounts.faucet.to_account_info(),   // update authority to collection metadata is faucet authority (signer)
             payer: ctx.accounts.faucet_auth.to_account_info(),
             metadata: ctx.accounts.metadata_account.to_account_info(),
             token_program: ctx.accounts.token_program.to_account_info(),
@@ -112,7 +111,6 @@ pub fn create_faucet_v2(ctx: Context<CreateFaucetV2>, params: CreateFaucetV2Para
         signer_seeds
     );
     create_master_edition_v3(cpi_context, Some(0))?;
-    msg!("-- Created collection nft edition");
     Ok(())
 }
 
@@ -137,10 +135,10 @@ pub struct CreateFaucetV2<'info> {
         seeds=[faucet_auth.key().as_ref(), mint.key().as_ref()],
         bump
     )]
-    pub faucet: Account<'info, FaucetV2>,
-    pub layer_map: Option<Account<'info, LayerMap>>,
-    pub supply_map: Option<Account<'info, SupplyMap>>,
-    pub open_map: Option<Account<'info, OpenMap>>,
+    pub faucet: Box<Account<'info, FaucetV2>>,
+    pub layer_map: Option<Box<Account<'info, LayerMap>>>,
+    pub supply_map: Option<Box<Account<'info, SupplyMap>>>,
+    pub open_map: Option<Box<Account<'info, OpenMap>>>,
     #[account(
         init,
         payer = faucet_auth,
@@ -148,20 +146,20 @@ pub struct CreateFaucetV2<'info> {
         mint::authority = faucet.key(),
         mint::freeze_authority = faucet.key(),
     )]
-    pub mint: Account<'info, Mint>,
+    pub mint: Box<Account<'info, Mint>>,
     #[account(
         init_if_needed,
         payer = faucet_auth,
         associated_token::mint = mint,
         associated_token::authority = faucet
     )]
-    pub associated_token_account: Account<'info, TokenAccount>,
+    pub associated_token_account: Box<Account<'info, TokenAccount>>,
     /// CHECK - address
     #[account(mut)]
-    pub metadata_account: AccountInfo<'info>,
+    pub metadata_account: UncheckedAccount<'info>,
     /// CHECK: address
     #[account(mut)]
-    pub master_edition_account: AccountInfo<'info>,
+    pub master_edition_account: UncheckedAccount<'info>,
     // programs
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,

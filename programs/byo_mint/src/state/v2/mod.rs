@@ -12,3 +12,5 @@ pub mod open_map;
 pub use open_map::*;
 pub mod byo_creator;
 pub use byo_creator::*;
+pub mod additional_assets;
+pub use additional_assets::*;

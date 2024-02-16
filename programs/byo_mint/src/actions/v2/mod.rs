@@ -8,3 +8,5 @@ pub mod open_map;
 pub use open_map::*;
 pub mod background;
 pub use background::*;
+pub mod additional_assets;
+pub use additional_assets::*;

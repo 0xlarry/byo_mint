@@ -21,11 +21,10 @@ impl FaucetV2 {
         + 32 
         + 32 
         + 32
-        + 32 
-        + 32 
         + 8
         + 8
         + 8
+        + 32
         + 32
         + 32
         + 32
@@ -37,9 +36,9 @@ impl FaucetV2 {
         merkle_tree: Pubkey,
         supply_cap: u64,
         mint_price: u64,
-        layer_map: &Option<Account<LayerMap>>,
-        supply_map: &Option<Account<SupplyMap>>,
-        open_map: &Option<Account<OpenMap>>,
+        layer_map: &Option<Box<Account<LayerMap>>>,
+        supply_map: &Option<Box<Account<SupplyMap>>>,
+        open_map: &Option<Box<Account<OpenMap>>>,
         mint_token: Pubkey,
         bump: u8,
     ) -> Result<FaucetV2> {

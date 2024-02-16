@@ -6,6 +6,7 @@ use mpl_bubblegum::utils::get_asset_id;
 // SET BG COLOR
 // *********************************
 pub fn set_bg_color<'info>(ctx: Context<'_, '_, '_, 'info, SetBgColor<'info>>, params: SetBgColorParams) -> Result<()> {
+    require!(ctx.accounts.background.color_or_asset_id.len() < 44, ByomError::BackgroundTokenAlreadyExists);
     check_cnft_owner(
         &ctx.accounts.leaf_owner.to_account_info(), 
         &&ctx.accounts.merkle_tree.to_account_info(), 

@@ -1,0 +1,28 @@
+TODO
+
+program:
+- test transfering background asset in and out
+- test supply map
+- test layer map
+- ensure all v1 ixs are still intact
+- clean up repo (keys + collection keys)
+- extend program account
+
+webhook
+- ensure the correct metadata OR faucet key is being listened to
+
+lambda
+- ensure the right program id, open map id, storage account are hard coded
+
+mainnet
+- create new key for collection mint
+- create open map
+- create facuet v2
+- update webhook listen account
+- update lambda with correct IDs
+
+
+2/13
+- issue with transferring cNFTs... seems to be a problem with RPCs
+    https://discord.com/channels/848060988636921856/1205343007956541480/1205343007956541480
+

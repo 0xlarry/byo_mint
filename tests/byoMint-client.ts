@@ -525,7 +525,6 @@ export const closeBackgroundIx = async (
     .remainingAccounts(proofPathAsAccounts)
     .instruction();
 }
-
 export const setBgColorIx = async (
     program: any,
     signerPubkey: PublicKey,
@@ -557,8 +556,6 @@ export const getCnftAccounts = async (assetId, loadingLoot = false) => {
     // accounts
     const leafDelegate = asset.ownership.delegate ? new PublicKey(asset.ownership.delegate) : new PublicKey(asset.ownership.owner);
     const proofPathAsAccounts = mapProof(proof);
-    console.log("PROOF LENGTH = ", proofPathAsAccounts.length);
-    console.log("TREE PUBKEY = ", asset.compression.tree)
 
     // params
     const root = decode(proof.root);
@@ -608,7 +605,6 @@ export async function getAsset(assetId: any, rpcUrl = process.env.RPC): Promise<
   
   export async function getAssetProof(assetId: any, rpcUrl = process.env.RPC): Promise<any> {
     try {
-  
       const axiosInstance = axios.create({
         baseURL: rpcUrl,
       });

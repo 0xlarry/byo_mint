@@ -1,4 +1,4 @@
-import {ComputeBudgetProgram, Connection, Keypair, PublicKey, SYSVAR_INSTRUCTIONS_PUBKEY, Transaction, sendAndConfirmTransaction} from "@solana/web3.js";
+import {AddressLookupTableProgram, ComputeBudgetProgram, Connection, Keypair, PublicKey, SYSVAR_INSTRUCTIONS_PUBKEY, SystemProgram, Transaction, TransactionInstruction, TransactionMessage, TransactionSignature, VersionedTransaction, sendAndConfirmTransaction} from "@solana/web3.js";
 import {TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from "@solana/spl-token";
 import { MPL_BUBBLEGUM_PROGRAM_ID, findTreeConfigPda } from "@metaplex-foundation/mpl-bubblegum";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
@@ -19,12 +19,14 @@ export const loadCliWallet = (filepath) => {
 // *********************************
 // EXECUTE TX
 // *********************************
-export const executeTx = async (keypair, ixs, extraSigner = null, finalized = false, skipPreflight = false) => {
+export const executeTx = async (keypair, ixs, extraSigner = null, finalized = false, skipPreflight = false, addCompute = false) => {
     const tx = new Transaction();
-    const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({ 
-        units: 1000000 
-    });
-    tx.add(modifyComputeUnits);
+    if (addCompute) {
+        const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({ 
+            units: 1000000 
+        });
+        tx.add(modifyComputeUnits);
+    }
     ixs.forEach(ix => tx.add(ix) );
     const { blockhash } = await connection.getLatestBlockhash();
     tx.recentBlockhash = blockhash;
@@ -33,12 +35,12 @@ export const executeTx = async (keypair, ixs, extraSigner = null, finalized = fa
     if (extraSigner) {
         signers.push(extraSigner);
     }
-    console.log("++ ABOUT TO SIGN");
+    console.log("++ ABOUT TO SIGN as ", keypair.publicKey.toString());
     const sig = await sendAndConfirmTransaction(connection, tx, signers, {
         commitment: finalized ? 'finalized' : 'confirmed',
         skipPreflight
     });
-    console.log({sig});
+    console.log(sig);
     return sig;
 }
 
@@ -90,6 +92,13 @@ export const findBackgroundPda = (program, mint) => {
     ], program.programId);
     return bgPda;
 }
+export const findAdditionalAssetsPda = (program, mint) => {
+    let [aaPda] = PublicKey.findProgramAddressSync([
+        anchor.utils.bytes.utf8.encode("additional_assets"),
+        mint.toBuffer()
+    ], program.programId);
+    return aaPda;
+}
 
 // *********************************
 // METADATA MAPs
@@ -104,7 +113,7 @@ export const createLayerMapIx = async (
     layers: any
 ) => {
     const layerMap = findLayerMapPda(program, signerPubkey, symbol);
-    return program.methods.createLayerMap({
+    return program.methods.initLayerMap({
         sellerFeeBasisPoints,
         uriPrefix,
         symbol,
@@ -125,7 +134,7 @@ export const createSupplyMapIx = async (
     items: any
 ) => {
     const supplyMap = findSupplyMapPda(program, signerPubkey, symbol);
-    return program.methods.createSupplyMap({
+    return program.methods.initSupplyMap({
         sellerFeeBasisPoints,
         symbol,
         creators,
@@ -136,20 +145,35 @@ export const createSupplyMapIx = async (
         systemProgram: anchor.web3.SystemProgram.programId
     }).instruction();
 }
+export const updateSupplyIx = async (
+    program: any,
+    signerPubkey: PublicKey,
+    supplyMap: PublicKey,
+    items: any
+) => {
+    return program.methods.editSupply({
+        items
+    }).accounts({
+        signer: signerPubkey,
+        supplyMap
+    }).instruction();
+};
 export const createOpenMapIx = async (
     program: any,
     signerPubkey: PublicKey, 
     sellerFeeBasisPoints: number, 
     symbol: string,
     creators: any, 
+    uriPrefix: string
 ) => {
     const openMap = findOpenMapPda(program, signerPubkey, symbol);
-    return program.methods.createOpenMap({
+    return program.methods.initOpenMap({
         sellerFeeBasisPoints,
         symbol,
-        creators
+        creators,
+        uriPrefix
     }).accounts({
-        signer: signerPubkey,
+        auth: signerPubkey,
         openMap,
         systemProgram: anchor.web3.SystemProgram.programId
     }).instruction();
@@ -171,8 +195,9 @@ export const createFaucetV2Ix = async (
     supplyCap: number,
     mintPrice: number,
     mintToken: PublicKey | null,
+    collectionMint = null
 ) => {
-    const collectionMint: anchor.web3.Keypair = anchor.web3.Keypair.generate();
+    collectionMint = collectionMint === null ? anchor.web3.Keypair.generate() : collectionMint;
     const faucet = findFaucetV2Pda(program, signerPubkey, collectionMint.publicKey);
     const associatedTokenAccount = anchor.utils.token.associatedAddress({
       mint: collectionMint.publicKey,
@@ -199,7 +224,7 @@ export const createFaucetV2Ix = async (
     ))[0];
     console.log("-- Collection Master edition:", masterEditionAddress.toBase58());
     return {
-        ix: await program.methods.createFaucetV2({
+        ix: await program.methods.initFaucetV2({
                 collectionName,
                 collectionSymbol,
                 collectionUri,
@@ -254,7 +279,7 @@ export const addNewTreeV2 = async (
       11,
     );
     return {
-        ix: await program.methods.addNewTreeV2().accounts({
+        ix: await program.methods.newTreeV2().accounts({
                 faucetAuth: signerPubkey,
                 faucet: faucetV2Pda,
                 merkleTree: emptyMerkleTree.publicKey,
@@ -275,12 +300,12 @@ export const updateFaucetV2Ix = async (
     layerMap: PublicKey | null,
     supplyMap: PublicKey | null,
     openMap: PublicKey | null,
-    supplyCap: Number | null,
-    mintPrice: Number | null
+    supplyCap: number | null,
+    mintPrice: number | null
 ) => {
-    return await program.methods.updateFaucetV2({
-        supplyCap,
-        mintPrice
+    return await program.methods.editFaucetV2({
+        supplyCap: supplyCap ? new anchor.BN(supplyCap) : null,
+        mintPrice: mintPrice ? new anchor.BN(mintPrice) : null
     }).accounts({
         faucetAuth: signerPubkey,
         faucet: faucetV2Pda,
@@ -337,7 +362,7 @@ export const mintLayerMapIx = async (
     const {metadataAddress, masterEditionAddress, bubblegumSigner} = await getCollectionAccounts(faucetAccount);
     // fee accounts
     const {creator, creatorTa, minterTa} = await getFeeAccounts(faucetAccount, layerMap, signerPubkey);
-    return await program.methods.mintLayerMap({
+    return await program.methods.mintLayer({
         layers: Buffer.from(layers),
         bgColor
     }).accounts({
@@ -377,12 +402,13 @@ export const mintSupplyMapIx = async (
     const {metadataAddress, masterEditionAddress, bubblegumSigner} = await getCollectionAccounts(faucetAccount);
     // fee accounts
     const {creator, creatorTa, minterTa} = await getFeeAccounts(faucetAccount, supplyMap, signerPubkey);
-    return await program.methods.mintSupplyMap().accounts({
+    return await program.methods.mintSupply().accounts({
         minter: signerPubkey,
         faucet: faucetV2Pda,
-        supplyMap,
+        supplyMap: faucetAccount.supplyMap,
         treeConfig,
         leafOwner: signerPubkey,
+        merkleTree: faucetAccount.merkleTree,
         collectionMint: faucetAccount.collectionMint,
         collectionMetadata: metadataAddress,
         editionAccount: masterEditionAddress,
@@ -404,24 +430,25 @@ export const mintOpenMapIx = async (
     signerPubkey: PublicKey,
     faucetV2Pda: PublicKey,
     name: String, 
-    jsonUri: String
+    imageUri: String
 ) => {
     // faucet accounts
     const faucetAccount = await program.account.faucetV2.fetch(faucetV2Pda);
     const umi = createUmi(process.env.RPC);
     const [treeConfig] = findTreeConfigPda(umi,{merkleTree: faucetAccount.merkleTree});
     const openMap = await program.account.openMap.fetch(faucetAccount.openMap);
+    console.log('-- OM: ', faucetAccount.openMap.toString());
     // collection accounts
     const {metadataAddress, masterEditionAddress, bubblegumSigner} = await getCollectionAccounts(faucetAccount);
     // fee accounts
     const {creator, creatorTa, minterTa} = await getFeeAccounts(faucetAccount, openMap, signerPubkey);
-    return await program.methods.mintOpenMap({
+    return await program.methods.mintOpen({
         name,
-        jsonUri
+        imageUri
     }).accounts({
         minter: signerPubkey,
         faucet: faucetV2Pda,
-        openMap,
+        openMap: faucetAccount.openMap,
         treeConfig,
         merkleTree: faucetAccount.merkleTree,
         leafOwner: signerPubkey,
@@ -470,7 +497,6 @@ export const setBgColorIx = async (
     const {proofPathAsAccounts, params, merkleTree} = await getCnftAccounts(mint);
     const bgPda = findBackgroundPda(program, mint);
     params['bgColor'] = bgColor;
-    console.log({proofPathAsAccounts});
     return await program.methods.setBgColor(params).accounts({
         leafOwner: signerPubkey,
         background: bgPda,
@@ -481,8 +507,235 @@ export const setBgColorIx = async (
     .remainingAccounts(proofPathAsAccounts)
     .instruction();
 }
-// TODO: add bg asset
-// TODO: remove bg asset
+const fetchBgAssetMetadata = async (assetId) => {
+    const asset = await getAsset(assetId.toString());
+    
+    return {
+      uri: asset.content.json_uri, 
+      name: asset.content.metadata.name,
+      creator: new PublicKey(asset.creators[1].address)
+    }
+}
+export const addBgAssetIx = async (
+    program: any,
+    signerPubkey: PublicKey,
+    assetId: PublicKey,
+    bgAssetId: PublicKey
+) => {
+    const {proofPathAsAccounts, params, merkleTree} = await getCnftAccounts(assetId);
+    const bgPda = findBackgroundPda(program, assetId);
+    const {proofPathAsAccounts: bgProofPathAsAccounts, params: bgParams, merkleTree: bgMerkleTree} = await getCnftAccounts(bgAssetId);
+    const {name, uri, creator} = await fetchBgAssetMetadata(bgAssetId);
+    params['proofLen'] = proofPathAsAccounts.length;
+    params['bgRoot'] = bgParams.root;
+    params['bgDataHash'] = bgParams.dataHash;
+    params['bgCreatorHash'] = bgParams.creatorHash;
+    params['bgNone'] = bgParams.nonce;
+    params['bgIndex'] = bgParams.index;
+    params['bgProofLen'] = bgProofPathAsAccounts.length;
+    params['bgName'] = name;
+    params['bgUri'] = uri;
+    params['bgCreator'] = creator;
+    const umi = createUmi(process.env.RPC);
+    const bgTreeConfig = new PublicKey(findTreeConfigPda(umi, {merkleTree: bgMerkleTree})[0]);
+    return {
+        ix: await program.methods.addBgToken(params).accounts({
+                signer: signerPubkey,
+                background: bgPda,
+                merkleTree: merkleTree,
+                bgMerkleTree: bgMerkleTree,
+                bgTreeConfig: bgTreeConfig,
+                compressionProgram: SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+                systemProgram: anchor.web3.SystemProgram.programId,
+                logWrapper: SPL_NOOP_PROGRAM_ID,
+                bubblegumProgram: new PublicKey(MPL_BUBBLEGUM_PROGRAM_ID),
+            })
+            .remainingAccounts(proofPathAsAccounts.concat(bgProofPathAsAccounts))
+            .instruction(),
+        lutAccounts: [
+            signerPubkey,
+            bgPda,
+            merkleTree,
+            bgMerkleTree,
+            bgTreeConfig,
+            SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+            anchor.web3.SystemProgram.programId,
+            SPL_NOOP_PROGRAM_ID,
+            new PublicKey(MPL_BUBBLEGUM_PROGRAM_ID),
+        ]
+    }
+}
+export const removeBgAssetIx = async (
+    program: any,
+    signerPubkey: PublicKey,
+    assetId: PublicKey,
+    bgAssetId: PublicKey
+) => {
+    const {proofPathAsAccounts, params, merkleTree} = await getCnftAccounts(assetId);
+    const additionalAssets = findAdditionalAssetsPda(program, assetId);
+    const {proofPathAsAccounts: bgProofPathAsAccounts, params: bgParams, merkleTree: bgMerkleTree} = await getCnftAccounts(bgAssetId);
+    const {name, uri, creator} = await fetchBgAssetMetadata(bgAssetId);
+    params['proofLen'] = proofPathAsAccounts.length;
+    params['bgRoot'] = bgParams.root;
+    params['bgDataHash'] = bgParams.dataHash;
+    params['bgCreatorHash'] = bgParams.creatorHash;
+    params['bgNone'] = bgParams.nonce;
+    params['bgIndex'] = bgParams.index;
+    params['bgProofLen'] = bgProofPathAsAccounts.length;
+    const umi = createUmi(process.env.RPC);
+    const bgTreeConfig = new PublicKey(findTreeConfigPda(umi, {merkleTree: bgMerkleTree})[0]);
+    return {
+        ix: await program.methods.removeBackground(params).accounts({
+                signer: signerPubkey,
+                additionalAssets,
+                merkleTree: merkleTree,
+                bgMerkleTree: bgMerkleTree,
+                bgTreeConfig: bgTreeConfig,
+                compressionProgram: SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+                systemProgram: anchor.web3.SystemProgram.programId,
+                logWrapper: SPL_NOOP_PROGRAM_ID,
+                bubblegumProgram: new PublicKey(MPL_BUBBLEGUM_PROGRAM_ID),
+            })
+            .remainingAccounts(proofPathAsAccounts.concat(bgProofPathAsAccounts))
+            .instruction(),
+        lutAccounts: [
+            signerPubkey,
+            additionalAssets,
+            merkleTree,
+            bgMerkleTree,
+            bgTreeConfig,
+            SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+            anchor.web3.SystemProgram.programId,
+            SPL_NOOP_PROGRAM_ID,
+            new PublicKey(MPL_BUBBLEGUM_PROGRAM_ID),
+        ]
+    }
+}
+
+// *********************************
+// ADDITIONAL ASSETS IXs
+// *********************************
+export const createAdditionalAssetsIx = async (
+    program: any,
+    signerPubkey: PublicKey,
+    mint: PublicKey
+) => {
+    const {proofPathAsAccounts, params, merkleTree} = await getCnftAccounts(mint);
+    const additionalAssets = findAdditionalAssetsPda(program, mint);
+    return await program.methods.createAdditionalAssets(params).accounts({
+        signer: signerPubkey,
+        additionalAssets,
+        merkleTree: merkleTree,
+        compressionProgram: SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId
+    })
+    .remainingAccounts(proofPathAsAccounts)
+    .instruction();
+}
+export const closeAdditionalAssetsIx = async (
+    program: any,
+    signerPubkey: PublicKey,
+    mint: PublicKey
+) => {
+    const {proofPathAsAccounts, params, merkleTree} = await getCnftAccounts(mint);
+    const additionalAssets = findAdditionalAssetsPda(program, mint);
+    return await program.methods.closeAdditionalAssets(params).accounts({
+        signer: signerPubkey,
+        additionalAssets,
+        merkleTree: merkleTree,
+        compressionProgram: SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId
+    })
+    .remainingAccounts(proofPathAsAccounts)
+    .instruction();
+}
+export const addBackgroundIx = async (
+    program: any,
+    signerPubkey: PublicKey,
+    assetId: PublicKey,
+    bgAssetId: PublicKey
+) => {
+    const {proofPathAsAccounts, params, merkleTree} = await getCnftAccounts(assetId);
+    const additionalAssets = findAdditionalAssetsPda(program, assetId);
+    const {proofPathAsAccounts: bgProofPathAsAccounts, params: bgParams, merkleTree: bgMerkleTree} = await getCnftAccounts(bgAssetId);
+    const {name, uri, creator} = await fetchBgAssetMetadata(bgAssetId);
+    params['proofLen'] = proofPathAsAccounts.length;
+    params['bgRoot'] = bgParams.root;
+    params['bgDataHash'] = bgParams.dataHash;
+    params['bgCreatorHash'] = bgParams.creatorHash;
+    params['bgNone'] = bgParams.nonce;
+    params['bgIndex'] = bgParams.index;
+    params['bgProofLen'] = bgProofPathAsAccounts.length;
+    params['bgName'] = name;
+    params['bgUri'] = uri;
+    params['bgCreator'] = creator;
+    const umi = createUmi(process.env.RPC);
+    const bgTreeConfig = new PublicKey(findTreeConfigPda(umi, {merkleTree: bgMerkleTree})[0]);
+    console.log({baseProofLen: proofPathAsAccounts.length, bgProofLen: bgProofPathAsAccounts.length});
+    const additionalAccounts = proofPathAsAccounts.concat(bgProofPathAsAccounts);
+    // console.log({additionalAccounts})
+    return {
+        ix: await program.methods.addBackground(params).accounts({
+                signer: signerPubkey,
+                additionalAssets,
+                merkleTree: merkleTree,
+                bgMerkleTree: bgMerkleTree,
+                bgTreeConfig: bgTreeConfig,
+                compressionProgram: SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+                systemProgram: anchor.web3.SystemProgram.programId,
+                logWrapper: SPL_NOOP_PROGRAM_ID,
+                bubblegumProgram: new PublicKey(MPL_BUBBLEGUM_PROGRAM_ID),
+            })
+            .remainingAccounts(additionalAccounts)
+            .instruction(),
+        lutAccounts: additionalAccounts.map(x => x.pubkey)
+    }
+}
+export const removeBackgroundIx = async (
+    program: any,
+    signerPubkey: PublicKey,
+    assetId: PublicKey,
+    bgAssetId: PublicKey
+) => {
+    const {proofPathAsAccounts, params, merkleTree} = await getCnftAccounts(assetId);
+    const additionalAssets = findAdditionalAssetsPda(program, assetId);
+    const {proofPathAsAccounts: bgProofPathAsAccounts, params: bgParams, merkleTree: bgMerkleTree} = await getCnftAccounts(bgAssetId);
+    params['proofLen'] = proofPathAsAccounts.length;
+    params['bgRoot'] = bgParams.root;
+    params['bgDataHash'] = bgParams.dataHash;
+    params['bgCreatorHash'] = bgParams.creatorHash;
+    params['bgNone'] = bgParams.nonce;
+    params['bgIndex'] = bgParams.index;
+    params['bgProofLen'] = bgProofPathAsAccounts.length;
+    const umi = createUmi(process.env.RPC);
+    const bgTreeConfig = new PublicKey(findTreeConfigPda(umi, {merkleTree: bgMerkleTree})[0]);
+    return {
+        ix: await program.methods.removeBackground(params).accounts({
+                signer: signerPubkey,
+                additionalAssets,
+                merkleTree: merkleTree,
+                bgMerkleTree: bgMerkleTree,
+                bgTreeConfig: bgTreeConfig,
+                compressionProgram: SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+                systemProgram: anchor.web3.SystemProgram.programId,
+                logWrapper: SPL_NOOP_PROGRAM_ID,
+                bubblegumProgram: new PublicKey(MPL_BUBBLEGUM_PROGRAM_ID),
+            })
+            .remainingAccounts(proofPathAsAccounts.concat(bgProofPathAsAccounts))
+            .instruction(),
+        lutAccounts: [
+            signerPubkey,
+            additionalAssets,
+            merkleTree,
+            bgMerkleTree,
+            bgTreeConfig,
+            SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+            anchor.web3.SystemProgram.programId,
+            SPL_NOOP_PROGRAM_ID,
+            new PublicKey(MPL_BUBBLEGUM_PROGRAM_ID),
+        ]
+    }
+}
 
 // *********************************
 // UTILs
@@ -495,8 +748,6 @@ export const getCnftAccounts = async (assetId, loadingLoot = false) => {
     // accounts
     const leafDelegate = asset.ownership.delegate ? new PublicKey(asset.ownership.delegate) : new PublicKey(asset.ownership.owner);
     const proofPathAsAccounts = mapProof(proof);
-    console.log("PROOF LENGTH = ", proofPathAsAccounts.length);
-    console.log("TREE PUBKEY = ", asset.compression.tree)
 
     // params
     const root = decode(proof.root);
@@ -579,3 +830,61 @@ export const mapProof = (assetProof: any) => {
         isWritable: false,
     }));
 };
+
+export async function sendTransactionV0(
+	connection: Connection,
+	instructions: TransactionInstruction[],
+	payer: Keypair,
+): Promise<void> {
+	let blockhash = await connection
+		.getLatestBlockhash()
+		.then((res) => res.blockhash);
+
+	const messageV0 = new TransactionMessage({
+		payerKey: payer.publicKey,
+		recentBlockhash: blockhash,
+		instructions,
+	}).compileToV0Message();
+
+	const tx = new VersionedTransaction(messageV0);
+	tx.sign([payer]);
+    console.log("SENDING TX FOR LUT");
+	const sx = await connection.sendTransaction(tx);
+    await connection.confirmTransaction({signature: sx}, 'confirmed');
+
+	console.log(`** -- Signature: ${sx}`);
+}
+export function delay(duration) {
+    return new Promise(resolve => setTimeout(resolve, duration));
+}
+export const executeLookupTableTx = async (kp, connection, lutAccounts, ixs) => {
+    const [lookupTableInst, lookupTableAddress] = AddressLookupTableProgram.createLookupTable({
+        authority: kp.publicKey,
+        payer: kp.publicKey,
+        recentSlot: await connection.getSlot("finalized"),
+    });
+    const extendIx = AddressLookupTableProgram.extendLookupTable({
+        payer: kp.publicKey,
+        authority: kp.publicKey,
+        lookupTable: lookupTableAddress,
+        addresses: lutAccounts,
+    });
+    await sendTransactionV0(connection, [lookupTableInst, extendIx], kp);
+    // timeout
+    await delay(2000);
+    let lookupTableAccount;
+    while(!lookupTableAccount)  {
+        lookupTableAccount = await connection
+		.getAddressLookupTable(lookupTableAddress, {commitment: 'confirmed'})
+		.then((res) => res.value);
+    }
+    const message = new TransactionMessage({
+        payerKey: kp.publicKey, 
+        recentBlockhash: (await connection.getLatestBlockhash('confirmed')).blockhash,
+        instructions: ixs
+    }).compileToV0Message([lookupTableAccount]);
+    const tx = new VersionedTransaction(message);
+	tx.sign([kp]);
+	const sx = await connection.sendTransaction(tx, {skipPreflight: true, commitment: 'confirmed'});
+	console.log(`** -- Signature: ${sx}`);
+}

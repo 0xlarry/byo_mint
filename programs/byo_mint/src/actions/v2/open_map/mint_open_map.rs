@@ -18,13 +18,13 @@ pub fn mint_open_map(ctx: Context<MintOpenMap>, params: MintOpenMapParams) -> Re
         ctx.accounts.creator.key(), 
         None, 
         None, 
-        Some(&mut *ctx.accounts.open_map),
+        Some(&mut ctx.accounts.open_map),
     )?;
 
     // pay fees to FIRST CREATOR
     if ctx.accounts.faucet.mint_token == Pubkey::default() {
         invoke(
-            &system_instruction::transfer(&ctx.accounts.minter.key(), &ctx.accounts.faucet.key(), ctx.accounts.faucet.mint_price), 
+            &system_instruction::transfer(&ctx.accounts.minter.key(), &ctx.accounts.creator.key(), ctx.accounts.faucet.mint_price), 
         &[
             ctx.accounts.minter.to_account_info(),
             ctx.accounts.creator.to_account_info(),
@@ -60,8 +60,8 @@ pub fn mint_open_map(ctx: Context<MintOpenMap>, params: MintOpenMapParams) -> Re
     }
     
 
-    // choose item
-    OpenMap::verify_metadata(params.json_uri.clone(), params.name.clone())?;
+    // validate input and get arweave identifyer
+    let open_mint_id = OpenMap::verify_metadata(params.image_uri.clone(), params.name.clone())?;
     
     // mint cnft
     let open_map = &mut ctx.accounts.open_map;
@@ -92,7 +92,7 @@ pub fn mint_open_map(ctx: Context<MintOpenMap>, params: MintOpenMapParams) -> Re
         .metadata( MetadataArgs {
                 name: params.name,
                 symbol: open_map.symbol.clone(),
-                uri: params.json_uri,
+                uri: format!("{}/{}.json", open_map.uri_prefix, open_mint_id),
                 creators: build_creators(open_map.creators.clone(), ctx.accounts.minter.key()),
                 seller_fee_basis_points: open_map.seller_fee_basis_points,
                 primary_sale_happened: false,
@@ -114,7 +114,7 @@ pub fn mint_open_map(ctx: Context<MintOpenMap>, params: MintOpenMapParams) -> Re
 
 #[derive(Clone, AnchorSerialize, AnchorDeserialize)]
 pub struct MintOpenMapParams {
-    json_uri: String,
+    image_uri: String,
     name: String
 }
 
@@ -123,8 +123,8 @@ pub struct MintOpenMap<'info> {
     #[account(mut)]
     pub minter: Signer<'info>,
     #[account(mut)]
-    pub faucet: Box<Account<'info, FaucetV2>>,
-    pub open_map: Box<Account<'info, OpenMap>>,
+    pub faucet: Account<'info, FaucetV2>,
+    pub open_map: Account<'info, OpenMap>,
     /// CHECK: This account is checked in the instruction
     #[account(mut)]
     pub tree_config: UncheckedAccount<'info>,

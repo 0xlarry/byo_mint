@@ -7,5 +7,5 @@ pub struct Background {
 
 impl Background {
     pub const LEN: usize = 8
-        + 44;
+        + 50;
 }

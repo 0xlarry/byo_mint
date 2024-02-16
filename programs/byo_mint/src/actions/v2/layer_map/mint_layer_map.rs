@@ -12,6 +12,7 @@ use mpl_bubblegum::types::{Collection, MetadataArgs, TokenProgramVersion, TokenS
 // *********************************
 pub fn mint_layer_map(ctx: Context<MintLayerMap>, params: MintLayerMapParams) -> Result<()> {
     // checks
+    msg!("** IN MINT LAYER IX");
     FaucetV2::mint_requirements(
         &mut ctx.accounts.faucet,
         ctx.accounts.merkle_tree.key(), 
@@ -20,6 +21,7 @@ pub fn mint_layer_map(ctx: Context<MintLayerMap>, params: MintLayerMapParams) ->
         None, 
         None
     )?;
+    msg!("**VALIDATED ACCOUNTS");
     LayerMap::validate_input_layers(&mut ctx.accounts.layer_map, params.layers.clone())?;
     match params.bg_color.clone() {
         Some(bgc) => {
@@ -27,15 +29,17 @@ pub fn mint_layer_map(ctx: Context<MintLayerMap>, params: MintLayerMapParams) ->
         },
         None => {}
     }// bg color does not factor into the byo_mint pda... thus same color can be used on different layer combos
+    msg!("**VALIDATED PARAMS");
 
     // set account data
     ctx.accounts.trait_combo.variants = params.layers.clone();
 
     // pay fees to FIRST CREATOR
+    msg!("**CHECKING FIRST CREATOR");
     require!(ctx.accounts.creator.key() == ctx.accounts.layer_map.creators[0].address, ByomError::InvalidAccount);
     if ctx.accounts.faucet.mint_token == Pubkey::default() {
         invoke(
-            &system_instruction::transfer(&ctx.accounts.minter.key(), &ctx.accounts.faucet.key(), ctx.accounts.faucet.mint_price), 
+            &system_instruction::transfer(&ctx.accounts.minter.key(), &ctx.accounts.creator.key(), ctx.accounts.faucet.mint_price), 
         &[
             ctx.accounts.minter.to_account_info(),
             ctx.accounts.creator.to_account_info(),
@@ -69,6 +73,7 @@ pub fn mint_layer_map(ctx: Context<MintLayerMap>, params: MintLayerMapParams) ->
             ctx.accounts.faucet.mint_price,
         )?;
     }
+    msg!("**PAID FEES");
     
     // mint cnft
     let layer_map = &mut ctx.accounts.layer_map;
@@ -131,7 +136,7 @@ pub struct MintLayerMap<'info> {
     #[account(mut)]
     pub minter: Signer<'info>,
     #[account(mut)]
-    pub faucet: Box<Account<'info, FaucetV2>>,
+    pub faucet: Account<'info, FaucetV2>,
     pub layer_map: Account<'info, LayerMap>,
     #[account(
         init,

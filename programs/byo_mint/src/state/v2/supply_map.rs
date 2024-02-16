@@ -35,17 +35,20 @@ impl SupplyMap {
     }
 
     pub fn select_item(&mut self, clock: &Sysvar<Clock>) -> Result<Item> {
-        if self.items.is_empty() {
+        let total_amount: u64 = self.items.iter().map(|item| item.amount).sum();
+        if self.items.is_empty() || total_amount == 0 {
             return Err(ByomError::NothingToMint.into());
         }
-    
-        let total_amount: u64 = self.items.iter().map(|item| item.amount).sum();
         let rng = get_random_index(clock, 0, total_amount - 1, 13); // need arbitrary seed as there is only 1 randomization in this ix
     
         let mut accumulated_amount = 0;
         for item in self.items.iter_mut() {
             accumulated_amount += item.amount;
             if rng <= accumulated_amount {
+                if item.amount == 0 {
+                    continue;
+                }
+                msg!("ITEM: {:?}", item);
                 item.amount -= 1;
                 return Ok(item.clone());
             }

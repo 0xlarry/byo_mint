@@ -11,29 +11,15 @@ pub struct RemoveBgToken<'info> {
     #[account(mut)]
     pub signer: Signer<'info>, // cNFT owner
     #[account(
-        init_if_needed,
-        payer = signer,
-        space=Background::LEN,
+        mut,
         seeds=["bg".as_ref(), get_asset_id(&merkle_tree.key(), params.nonce).as_ref()],
         bump
     )]
     pub background: Account<'info, Background>, // escrow account (cNFT receiver)
-    #[account(
-        seeds = [merkle_tree.key().as_ref()],
-        bump,
-        seeds::program = bubblegum_program.key()
-    )]
-    /// CHECK: This account is neither written to nor read from.
-    pub tree_config: UncheckedAccount<'info>,
-    /// CHECK: This account is chekced in the instruction
-    pub leaf_delegate: UncheckedAccount<'info>,
-    #[account(mut)]
     /// CHECK: This account is modified in the downstream program
     pub merkle_tree: UncheckedAccount<'info>,
     /// CHECK: This account is neither written to nor read from.
     pub bg_tree_config: UncheckedAccount<'info>,
-    /// CHECK: This account is chekced in the instruction
-    pub bg_leaf_delegate: UncheckedAccount<'info>,
     #[account(mut)]
     /// CHECK: This account is modified in the downstream program
     pub bg_merkle_tree: UncheckedAccount<'info>,
@@ -68,8 +54,8 @@ pub fn remove_bg_token<'info>(ctx: Context<'_, '_, '_, 'info, RemoveBgToken<'inf
     ctx.accounts.background.color_or_asset_id = String::new();
 
     // find proofs
-    let proof = &ctx.remaining_accounts[0..(params.proof_len - 1) as usize];
-    let bg_proof = &ctx.remaining_accounts[(params.proof_len - 1) as usize..(params.proof_len + params.bg_proof_len - 1) as usize];
+    let proof = &ctx.remaining_accounts[0..(params.proof_len) as usize];
+    let bg_proof = &ctx.remaining_accounts[(params.proof_len) as usize..(params.proof_len + params.bg_proof_len) as usize];
 
     // require signer owns the cNFT for bg
     check_cnft_owner(
@@ -84,13 +70,13 @@ pub fn remove_bg_token<'info>(ctx: Context<'_, '_, '_, 'info, RemoveBgToken<'inf
         params.index
     )?;
 
+    // transfer bg asset
     let remaining_accs: Vec<(&AccountInfo<'info>, bool, bool)> = bg_proof.iter()
         .map(|x| (
             x,
             false,
             false
         )).collect();
-
     TransferCpiBuilder::new(
         &ctx.accounts.bubblegum_program.to_account_info()
     )

@@ -102,6 +102,52 @@ pub mod byo_mint {
         actions::withdraw_fees_wl(ctx)
     }
 
+    // *************************************************************
+    // METADATA MAP V2
+    // *************************************************************
+    pub fn create_metadata_map_v2<'info>(
+        ctx: Context<'_, '_, '_, 'info, InitMetadataMapV2<'info>>,
+        params: InitMetadataMapV2Params
+    ) -> Result<()> {
+        actions::init_metadata_map_v2(ctx, params)
+    }
+
+    pub fn delete_metadata_map_v2<'info>(
+        ctx: Context<'_, '_, '_, 'info, CloseMetadataMapV2<'info>>
+    ) -> Result<()> {
+        actions::close_metadata_map_v2(ctx)
+    }
+
+    // *************************************************************
+    // FAUCET V2
+    // *************************************************************
+    pub fn create_faucet_v2<'info>(
+        ctx: Context<'_, '_, '_, 'info, InitFaucetV2<'info>>,
+        params: InitFaucetV2Params
+    ) -> Result<()> {
+        actions::init_faucet_v2(ctx, params)
+    }
+
+    pub fn add_new_tree_v2<'info>(
+        ctx: Context<'_, '_, '_, 'info, AddNewTreeV2<'info>>
+    ) -> Result<()> {
+        actions::new_tree_v2(ctx)
+    }
+
+    pub fn update_faucet_v2<'info>(
+        ctx: Context<'_, '_, '_, 'info, UpdateFaucetV2<'info>>,
+        params: UpdateFaucetV2Params
+    ) -> Result<()> {
+        actions::update_faucet_details_v2(ctx, params)
+    }
+
+    pub fn mint_v2<'info>(
+        ctx: Context<'_, '_, '_, 'info, MintV2<'info>>,
+        params: MintV2Params
+    ) -> Result<()> {
+        actions::mint_byo_v2(ctx, params)
+    }
+
 }
 
 #[derive(Clone)]

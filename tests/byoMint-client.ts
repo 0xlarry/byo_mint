@@ -24,7 +24,6 @@ export const findByoMintPda = (program, metadataMapPda, traits) => {
         metadataMapPda.toBuffer(),
         Buffer.from(traits),
       ], program.programId);
-    console.log("-- BYO PDA = ", byoPda.toString());
     return byoPda;
 }
 

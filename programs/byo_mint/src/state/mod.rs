@@ -8,3 +8,5 @@ pub mod wl_mint;
 pub use wl_mint::*;
 pub mod faucet_wl;
 pub use faucet_wl::*;
+pub mod v2_accounts;
+pub use v2_accounts::*;

@@ -27,6 +27,7 @@ pub fn new_tree_v2(ctx: Context<AddNewTreeV2>) -> Result<()> {
     require!(ctx.accounts.faucet.authority == ctx.accounts.faucet_auth.key(), ByomError::InvalidAuthority);
     require!(ctx.accounts.merkle_tree.data.borrow().len() == REQUIRED_TREE_ACCOUNT_SIZE, ByomError::InvalidTree);
     let signer_seeds: &[&[&[u8]]] = &[&[
+        "v2".as_bytes(),
         ctx.accounts.faucet.authority.as_ref(),
         ctx.accounts.faucet.metadata_map.as_ref(),
         &[ctx.accounts.faucet.bump],

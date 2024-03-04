@@ -33,6 +33,7 @@ pub fn init_faucet_v2(ctx: Context<InitFaucetV2>, params: InitFaucetV2Params) ->
     msg!("-- Set account data");
     
     let signer_seeds: &[&[&[u8]]] = &[&[
+        "v2".as_bytes(),
         ctx.accounts.faucet.authority.as_ref(),
         ctx.accounts.faucet.metadata_map.as_ref(),
         &[ctx.accounts.faucet.bump],
@@ -133,11 +134,11 @@ pub struct InitFaucetV2<'info> {
         init,
         space=FaucetV2::LEN,
         payer = faucet_auth,
-        seeds=[faucet_auth.key().as_ref(), metadata_map.key().as_ref()],
+        seeds=["v2".as_bytes(), faucet_auth.key().as_ref(), metadata_map.key().as_ref()],
         bump
     )]
-    pub faucet: Account<'info, FaucetV2>,
-    pub metadata_map: Account<'info, MetadataMapV2>,
+    pub faucet: Box<Account<'info, FaucetV2>>,
+    pub metadata_map: Box<Account<'info, MetadataMapV2>>,
     #[account(
         init,
         payer = faucet_auth,
@@ -145,14 +146,14 @@ pub struct InitFaucetV2<'info> {
         mint::authority = faucet.key(),
         mint::freeze_authority = faucet.key(),
     )]
-    pub mint: Account<'info, Mint>,
+    pub mint: Box<Account<'info, Mint>>,
     #[account(
         init_if_needed,
         payer = faucet_auth,
         associated_token::mint = mint,
         associated_token::authority = faucet
     )]
-    pub associated_token_account: Account<'info, TokenAccount>,
+    pub associated_token_account: Box<Account<'info, TokenAccount>>,
     /// CHECK - address
     #[account(mut)]
     pub metadata_account: AccountInfo<'info>,

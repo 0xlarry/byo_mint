@@ -34,6 +34,6 @@ pub struct UpdateFaucetV2<'info> {
     #[account(mut)]
     pub faucet_auth: Signer<'info>,
     #[account(mut)]
-    pub faucet: Account<'info, Faucet>,
+    pub faucet: Account<'info, FaucetV2>,
     pub system_program: Program<'info, System>,
 }

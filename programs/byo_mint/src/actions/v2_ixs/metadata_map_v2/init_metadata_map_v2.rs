@@ -33,7 +33,7 @@ pub struct InitMetadataMapV2<'info> {
         init,
         space=MetadataMapV2::LEN,
         payer = auth,
-        seeds=[auth.key().as_ref(), params.symbol.as_bytes()],
+        seeds=["v2".as_bytes(), auth.key().as_ref(), params.symbol.as_bytes()],
         bump
     )]
     pub metadata_map: Account<'info, MetadataMapV2>,

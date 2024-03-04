@@ -32,6 +32,7 @@ pub fn mint_byo_v2(ctx: Context<MintV2>, params: MintV2Params) -> Result<()> {
     // mint cnft
     let metadata_map = &mut ctx.accounts.metadata_map;
     let signer_seeds: &[&[&[u8]]] = &[&[
+        "v2".as_bytes(),
         ctx.accounts.faucet.authority.as_ref(),
         ctx.accounts.faucet.metadata_map.as_ref(),
         &[ctx.accounts.faucet.bump],
